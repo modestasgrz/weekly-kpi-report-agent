@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Example only, not installed by the code. To use: set WorkingDirectory to your clone, copy to ~/Library/LaunchAgents/, then `launchctl load` it. -->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.portfolio.weekly-kpi-report</string>
+    <key>WorkingDirectory</key>
+    <string>/path/to/weekly-kpi-report-agent</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/bin/env</string>
+        <string>uv</string>
+        <string>run</string>
+        <string>weekly-kpi-report</string>
+        <string>run</string>
+        <string>--data</string>
+        <string>data/raw/online_retail_II.xlsx</string>
+    </array>
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Weekday</key>
+        <integer>1</integer>
+        <key>Hour</key>
+        <integer>7</integer>
+        <key>Minute</key>
+        <integer>0</integer>
+    </dict>
+    <key>StandardOutPath</key>
+    <string>/tmp/weekly-kpi-report.log</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/weekly-kpi-report.log</string>
+</dict>
+</plist>
