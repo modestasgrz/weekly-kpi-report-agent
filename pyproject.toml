@@ -1,0 +1,50 @@
+[project]
+name = "weekly-kpi-report-agent"
+version = "0.1.0"
+description = "Weekly sales KPI report: every figure computed in code, LLM writes only the narrative, a checker rejects any number not in the computed set."
+readme = "README.md"
+authors = [
+    { name = "modestasgrz", email = "71698213+modestasgrz@users.noreply.github.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "anthropic>=2.5.0",
+    "google-api-python-client>=2.201.0",
+    "google-auth-oauthlib>=1.5.0",
+    "loguru>=0.7.3",
+    "openpyxl>=3.1.5",
+    "pandas>=3.1.1",
+    "pydantic>=2.14.3",
+]
+
+[build-system]
+requires = ["uv_build>=0.13.0,<0.14.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "mypy>=2.4.1",
+    "pandas-stubs>=3.1.0.261029",
+    "pytest>=9.2.0",
+    "ruff>=0.17.3",
+    "starlette>=1.10.0",
+]
+
+[project.scripts]
+weekly-kpi-report = "weekly_kpi_report_agent.cli:main"
+
+[tool.ruff]
+extend-exclude = [".semgrep/fixtures"]
+
+[tool.ruff.lint]
+ignore = ["E501"]
+
+[tool.mypy]
+strict = true
+ignore_missing_imports = true
+mypy_path = "tests/security"
+exclude = ["^\\.semgrep/", "^\\.claude/"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
