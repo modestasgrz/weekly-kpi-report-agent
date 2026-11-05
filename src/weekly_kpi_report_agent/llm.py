@@ -1,3 +1,5 @@
+import os
+
 import anthropic
 from pydantic import BaseModel
 
@@ -17,6 +19,10 @@ SCHEMA = {
 }
 
 
+class MissingAPIKeyError(RuntimeError):
+    pass
+
+
 class LLMReply(BaseModel):
     text: str
     input_tokens: int
@@ -24,6 +30,8 @@ class LLMReply(BaseModel):
 
 
 def complete(system: str, user: str) -> LLMReply:
+    if not os.environ.get("ANTHROPIC_API_KEY"):
+        raise MissingAPIKeyError
     client = anthropic.Anthropic(timeout=60, max_retries=2)
     response = client.messages.create(
         model=MODEL,

@@ -34,8 +34,8 @@ def clean(raw: pd.DataFrame) -> pd.DataFrame:
     df = raw[COLUMNS].copy()
     df["Invoice"] = df["Invoice"].astype(str)
     df["StockCode"] = df["StockCode"].astype(str)
-    df["Description"] = df["Description"].fillna("").astype(str)
-    df["Country"] = df["Country"].fillna("").astype(str)
+    df["Description"] = df["Description"].fillna("").astype(str).str.strip()
+    df["Country"] = df["Country"].fillna("").astype(str).str.strip()
     df["InvoiceDate"] = pd.to_datetime(df["InvoiceDate"])
     df["bucket"] = "product"
     rules = [

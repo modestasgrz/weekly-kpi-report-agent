@@ -123,3 +123,13 @@ def test_authorize_writes_private_token(
     path = gmail.authorize()
     assert from_file.call_args.args == (str(tmp_path / "client.json"), gmail.SCOPES)
     assert path.stat().st_mode & 0o777 == 0o600
+
+
+def test_missing_api_key_is_a_model_call_failure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from weekly_kpi_report_agent import llm
+
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    with pytest.raises(llm.CALL_ERRORS):
+        llm.complete("s", "u")

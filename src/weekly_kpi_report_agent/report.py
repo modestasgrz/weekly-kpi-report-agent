@@ -36,6 +36,11 @@ def render(
         ),
     ]
     shown = [f for f in week.figures if f.value is not None]
+    withheld = (
+        "Narrative withheld: the text failed the number check."
+        if rejected
+        else "Narrative withheld: no narrative was produced (see Flags)."
+    ) + " The figures below are computed in code and can be used as they are."
 
     md = [f"# {title}", "", f"Status: {week.status}", ""]
     page = [
@@ -63,12 +68,12 @@ def render(
         md += [
             "## Summary",
             "",
-            "Narrative withheld: the text failed the number check. The figures below are computed in code and can be used as they are.",
+            withheld,
             "",
         ]
         page += [
             "<h2>Summary</h2>",
-            "<p>Narrative withheld: the text failed the number check. The figures below are computed in code and can be used as they are.</p>",
+            f"<p>{html.escape(withheld)}</p>",
         ]
         if rejected:
             md += ["### Rejected sentences", "", *(f"> {s}\n" for s in rejected)]

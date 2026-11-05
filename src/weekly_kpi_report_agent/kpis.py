@@ -137,7 +137,7 @@ def compute_week(
             )
         )
 
-    lines = f"{cur.lines} product lines, {rng}, {file_name}"
+    lines = f"{cur.lines:,} product lines, {rng}, {file_name}"
     add(
         "week_start",
         "Week start (Monday)",
@@ -262,7 +262,7 @@ def compute_week(
                 f"{kpi} change, {kind}",
                 delta,
                 change(delta or 0),
-                f"({kpi} this week − {kpi} of the {described}) / base × 100; base {base}, {file_name}",
+                f"({kpi} this week − {kpi} of the {described}) / base × 100; base {'n/a' if base is None else f'{round(base, 2):,}'}, {file_name}",
             )
             if (
                 delta is not None
@@ -282,7 +282,7 @@ def compute_week(
                     label,
                     revenue,
                     money(revenue),
-                    f"sum(Quantity×Price) of {label} over {n} product lines, {rng}, {file_name}",
+                    f"sum(Quantity×Price) of {label} over {n:,} product lines, {rng}, {file_name}",
                 )
             else:
                 add(f"{prefix}_{i + 1}_revenue", "", None, "", "")
