@@ -40,10 +40,6 @@ class CheckerEval(BaseModel):
     by_type: dict[str, TypeResult]
 
 
-def direction(f: Figure) -> str:
-    return "rose" if (f.value or 0) > 0 else "fell"
-
-
 def sentences(f: dict[str, Figure]) -> list[str]:
     """Clean sentences built only from figure displays, each number with its own marker."""
     out = [
@@ -70,7 +66,9 @@ def sentences(f: dict[str, Figure]) -> list[str]:
         ]:
             c = f[f"F{int(fid[1:]) + offset}"]
             if c.value:
-                out.append(f"{name} {direction(c)} {c.display} [{c.id}] {when}.")
+                out.append(
+                    f"{name} {'rose' if c.value > 0 else 'fell'} {c.display} [{c.id}] {when}."
+                )
     for fid in ["F26", "F31"]:
         if f[fid].value is not None:
             out.append(f'"{f[fid].label}" brought in {f[fid].display} [{fid}].')

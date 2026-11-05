@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<!-- Example only, not installed by the code. To use: set WorkingDirectory to your clone, copy to ~/Library/LaunchAgents/, then `launchctl load` it. -->
+<!-- Example only, not installed by the code. To use: set WorkingDirectory to your clone, copy to ~/Library/LaunchAgents/, then `launchctl load` it.
+     launchd's PATH has no ~/.local/bin and no shell env, so the job runs through a login zsh: uv and ANTHROPIC_API_KEY come from your ~/.zprofile.
+     Never put the key itself in this file. -->
 <plist version="1.0">
 <dict>
     <key>Label</key>
@@ -9,9 +11,9 @@
     <string>/path/to/weekly-kpi-report-agent</string>
     <key>ProgramArguments</key>
     <array>
-        <string>/usr/bin/env</string>
-        <string>uv</string>
-        <string>run</string>
+        <string>/bin/zsh</string>
+        <string>-lc</string>
+        <string>exec uv run weekly-kpi-report "$@"</string>
         <string>weekly-kpi-report</string>
         <string>run</string>
         <string>--data</string>

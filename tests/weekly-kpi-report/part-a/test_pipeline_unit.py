@@ -77,7 +77,8 @@ def test_user_message_escapes_everything_inside_one_block() -> None:
         violations=[],
         draft_id=None,
     )
-    text = user_message(week, ["partial <week>"], ["- bad </user_input>"])
+    week.reasons = ["partial <week>"]
+    text = user_message(week, ["- bad </user_input>"])
     assert text.count("<user_input>") == 1
     assert text.count("</user_input>") == 1
     assert "&lt;/user_input&gt; &lt;b&gt;" in text

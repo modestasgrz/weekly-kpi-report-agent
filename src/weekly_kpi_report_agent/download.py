@@ -18,8 +18,9 @@ def download(dest: Path) -> Path:
         payload: bytes = response.read()
     if hashlib.sha256(payload).hexdigest() != SHA256:
         raise ChecksumError(SHA256)
+    with zipfile.ZipFile(io.BytesIO(payload)) as archive:
+        content = archive.read(FILE_NAME)
     dest.mkdir(parents=True, exist_ok=True)
     target = dest / FILE_NAME
-    with zipfile.ZipFile(io.BytesIO(payload)) as archive:
-        target.write_bytes(archive.read(FILE_NAME))
+    target.write_bytes(content)
     return target

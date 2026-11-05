@@ -1,5 +1,5 @@
 from datetime import date, datetime, timedelta
-from decimal import ROUND_HALF_UP, Decimal
+from decimal import ROUND_HALF_EVEN, ROUND_HALF_UP, Decimal
 
 import pandas as pd
 from pydantic import BaseModel
@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from weekly_kpi_report_agent.models import Figure
 
 MAX_LABEL = 100
-ANOMALY_PCT = 25.0
+ANOMALY_PCT = Decimal("25.0")
 COMPARED = ["revenue", "orders", "aov", "units", "customers"]
 DQ_BUCKETS = ["duplicate", "cancellation", "adjustment", "non_product", "non_positive"]
 DQ_KEYS = [
@@ -28,23 +28,20 @@ class WeekStats(BaseModel):
 
 
 def rounded(value: float, places: str) -> Decimal:
-    return Decimal(repr(value)).quantize(Decimal(places), ROUND_HALF_UP)
+    """ROUND_HALF_UP on the intended value: the float is first snapped to 9 decimals, so 538.3249999… (538.325) rounds up."""
+    return (
+        Decimal(value)
+        .quantize(Decimal("1e-9"), ROUND_HALF_EVEN)
+        .quantize(Decimal(places), ROUND_HALF_UP)
+    )
 
 
 def money(value: float) -> str:
     return f"£{rounded(value, '1'):,}"
 
 
-def money2(value: float) -> str:
-    return f"£{rounded(value, '0.01'):,}"
-
-
 def count(value: float) -> str:
     return f"{int(value):,}"
-
-
-def pct(value: float) -> str:
-    return f"{rounded(value, '0.1')}%"
 
 
 def change(value: float) -> str:
@@ -76,18 +73,16 @@ def aov(s: WeekStats) -> float | None:
 
 def ranked(products: pd.DataFrame, by: str) -> list[tuple[str, float, int]]:
     """(label, revenue, lines) top 5, revenue desc then label asc."""
-    rows = []
+    rows: list[tuple[str, float, int]] = []
     for key, group in products.groupby(by):
         label = (
             str(key)
             if by == "Country"
             else str(group["Description"].value_counts().sort_index().idxmax())
         )
-        rows.append(
-            (label[:MAX_LABEL], float(group["revenue"].sum()), len(group), str(key))
-        )
+        rows.append((label[:MAX_LABEL], float(group["revenue"].sum()), len(group)))
     rows.sort(key=lambda r: (-round(r[1], 6), r[0]))
-    return [(label, revenue, lines) for label, revenue, lines, _ in rows[:5]]
+    return rows[:5]
 
 
 def compute_week(
@@ -171,7 +166,7 @@ def compute_week(
         "aov",
         "Average order value (GBP)",
         week_aov,
-        money2(week_aov or 0),
+        f"£{rounded(week_aov or 0, '0.01'):,}",
         f"revenue / orders over {lines}",
     )
     add(
@@ -207,22 +202,16 @@ def compute_week(
         "cancellation_rate",
         "Cancellation rate",
         rate,
-        pct(rate or 0),
+        f"{rounded(rate or 0, '0.1')}%",
         f"{cancels} cancellation invoices / ({cur.orders} orders + {cancels} cancellation invoices), {rng}, {file_name}",
     )
 
     four_values = {
         "revenue": sum(s.revenue for s in last4) / 4,
         "orders": sum(s.orders for s in last4) / 4,
-        "aov": aov(
-            WeekStats(
-                lines=0,
-                revenue=sum(s.revenue for s in last4),
-                orders=sum(s.orders for s in last4),
-                units=0,
-                customers=0,
-            )
-        ),
+        "aov": sum(s.revenue for s in last4) / orders4
+        if (orders4 := sum(s.orders for s in last4))
+        else None,
         "units": sum(s.units for s in last4) / 4,
         "customers": sum(s.customers for s in last4) / 4,
     }
@@ -268,7 +257,7 @@ def compute_week(
                 delta is not None
                 and kpi in ("revenue", "orders")
                 and kind != "yoy"
-                and abs(delta) >= ANOMALY_PCT
+                and abs(rounded(delta, "0.1")) >= ANOMALY_PCT
             ):
                 anomalies.append(f"{kpi}_{kind}")
 

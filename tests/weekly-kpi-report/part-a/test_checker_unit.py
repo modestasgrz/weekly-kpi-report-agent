@@ -27,7 +27,38 @@ def test_unicode_minus_and_marker_without_space() -> None:
 
 
 def test_na_figure_matches_nothing() -> None:
-    assert kinds("It was n/a [F13] and 1 [F13].") == [("unknown_number", "1")]
+    assert kinds("It was n/a [F13] and 1 [F13].") == [
+        ("unknown_number", "1"),
+        ("wrong_reference", "[F13]"),
+    ]
+
+
+def test_marker_without_number_to_missing_figure_is_flagged() -> None:
+    assert kinds("Strong week [F99].") == [("wrong_reference", "[F99]")]
+
+
+def test_curly_quotes_and_full_stop_inside_label_are_masked() -> None:
+    figures = [*FIGURES, fig("F27", "£5", 5, "ST. GEORGE 3 FLAG")]
+    assert (
+        check_narrative(
+            '“ST. GEORGE 3 FLAG” made £5 [F27]. "SET OF 3 TINS" sold £77 [F26].',
+            figures,
+        )
+        == []
+    )
+
+
+def test_non_ascii_numerals_are_flagged() -> None:
+    assert kinds("Revenue rose ½ point to £1,234 [F3].") == [("unknown_number", "½")]
+
+
+def test_trailing_comma_is_not_part_of_the_token() -> None:
+    assert kinds("Revenue was £1,234, up.") == [("missing_reference", "£1,234")]
+
+
+def test_change_shown_as_zero_ignores_direction() -> None:
+    figures = [*FIGURES, fig("F14", "+0.0%", -0.01)]
+    assert check_narrative("Orders rose +0.0% [F14].", figures) == []
 
 
 def test_unknown_marker_is_unknown_number() -> None:

@@ -7,7 +7,14 @@ MODEL = "claude-sonnet-5-5"
 MAX_TOKENS = 2000
 INPUT_USD_PER_MTOK = 2.0
 OUTPUT_USD_PER_MTOK = 10.0
-CALL_ERRORS = (anthropic.AnthropicError, RuntimeError, OSError)
+CALL_ERRORS = (
+    anthropic.AnthropicError,
+    RuntimeError,
+    OSError,
+    ValueError,
+    KeyError,
+    TypeError,
+)
 SCHEMA = {
     "type": "object",
     "properties": {

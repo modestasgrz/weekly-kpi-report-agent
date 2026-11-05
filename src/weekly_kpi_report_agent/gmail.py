@@ -5,9 +5,11 @@ from email.mime.text import MIMEText
 from pathlib import Path
 from typing import Any
 
+import httplib2
 from google.auth.exceptions import GoogleAuthError
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
+from google_auth_httplib2 import AuthorizedHttp
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
@@ -16,7 +18,16 @@ SCOPES = ["https://www.googleapis.com/auth/gmail.compose"]
 DEFAULT_CLIENT_FILE = "~/.config/portfolio-demos/client_secret.json"
 DEFAULT_AUTH_FILE = "~/.config/portfolio-demos/token-weekly-kpi-report.json"
 DEFAULT_TO = "modis0001@gmail.com"
-DRAFT_ERRORS = (HttpError, GoogleAuthError, OSError, ValueError, RuntimeError)
+DRAFT_ERRORS = (
+    HttpError,
+    GoogleAuthError,
+    httplib2.HttpLib2Error,
+    OSError,
+    ValueError,
+    RuntimeError,
+    KeyError,
+)
+HTTP_TIMEOUT_S = 30
 
 
 def token_file() -> Path:
@@ -45,7 +56,12 @@ def create_draft(to: str, subject: str, html: str, service: Any | None = None) -
         if not creds.valid and creds.refresh_token:
             creds.refresh(Request())
             token_file().write_text(creds.to_json())
-        service = build("gmail", "v1", credentials=creds, cache_discovery=False)
+        service = build(
+            "gmail",
+            "v1",
+            http=AuthorizedHttp(creds, http=httplib2.Http(timeout=HTTP_TIMEOUT_S)),
+            cache_discovery=False,
+        )
     message = MIMEText(html, "html", "utf-8")
     message["To"] = to
     message["Subject"] = subject
