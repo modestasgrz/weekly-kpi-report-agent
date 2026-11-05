@@ -1,0 +1,11 @@
+.env
+__pycache__/
+.venv/
+data/raw/
+data/cache/
+out/
+credentials*.json
+token*.json
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
