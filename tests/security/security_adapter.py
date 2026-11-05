@@ -8,7 +8,12 @@ Check names: pii_logs, prompt_injection, model_output, step_skip, xff_spoof, cor
 After adapting: uv run pytest tests/security --collect-only -q | grep '::' > tests/security/EXPECTED_TESTS
 """
 
+import json
+import os
+import tempfile
+import uuid
 from collections.abc import Callable
+from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -29,10 +34,10 @@ NOT_APPLICABLE: dict[str, str] = {
 }
 # A real hole the owner accepts for now (shows as xfail with the reason, listed in the PR). Fix it, then remove the entry.
 KNOWN_OPEN: dict[str, str] = {
-    "pii_logs": "app not built yet: wired to the report pipeline at the spec stage",
-    "prompt_injection": "app not built yet: wired to the report pipeline at the spec stage",
-    "model_output": "app not built yet: wired to the report pipeline at the spec stage",
-    "provider_error": "app not built yet: wired to the report pipeline at the spec stage",
+    "pii_logs": "pipeline not built yet (spec weekly-kpi-report, PART-A); wired below, remove this entry once PART-A merges",
+    "prompt_injection": "pipeline not built yet (spec weekly-kpi-report, PART-A); wired below, remove this entry once PART-A merges",
+    "model_output": "pipeline not built yet (spec weekly-kpi-report, PART-A); wired below, remove this entry once PART-A merges",
+    "provider_error": "pipeline not built yet (spec weekly-kpi-report, PART-A); wired below, remove this entry once PART-A merges",
 }
 
 RATE_LIMIT = 5  # ADAPT: requests one session may make to the rate-limited endpoint before it gets 429
@@ -45,62 +50,162 @@ USER_INPUT_TAG = "user_input"  # ADAPT: tag the app fences visitor text in, e.g.
 IMAGE_FILES: list[Path] = []
 
 
-def app() -> Any:
-    """Placeholder until the pipeline exists; replaced by a test shim that runs one weekly report end to end."""
-    from starlette.applications import Starlette
-
-    return Starlette()
-
-
-def install_fakes(monkeypatch: pytest.MonkeyPatch, llm: "FakeLLM") -> None:
-    """Placeholder until the pipeline exists. ADAPT later: route every model call of the app to llm.respond(system_prompt, user_message_text) and return its value
-    in the shape the app expects; replace storage/email/other outside services with in-memory fakes that record
-    writes (see writes()); reset rate-limit state. No real network calls."""
-    return
-
-
-def good_reply() -> Any:
-    """ADAPT: a valid model reply the app accepts (what llm.respond returns by default)."""
-    return None
+COLUMNS = [
+    "Invoice",
+    "StockCode",
+    "Description",
+    "Quantity",
+    "InvoiceDate",
+    "Price",
+    "Customer ID",
+    "Country",
+]
+_writes: list[Any] = []
 
 
-def invalid_reply(canary: str) -> Any:
-    """ADAPT: a model reply that breaks the app's output schema and contains canary, e.g. {"questions": canary}."""
-    raise NotImplementedError(
-        "ADAPT tests/security/security_adapter.py: invalid_reply()"
+def _workbook(path: Path, text: str) -> None:
+    import pandas as pd
+
+    rows = [
+        ("580900", "22423", text, 4, datetime(2011, 11, 22, 10), 12.75, 12345, text),
+        ("581001", "22423", text, 2, datetime(2011, 11, 28, 10), 12.75, 12345, text),
+        (
+            "581002",
+            "84879",
+            "ASSORTED COLOUR BIRD ORNAMENT",
+            24,
+            datetime(2011, 11, 30, 11),
+            1.69,
+            13000,
+            "France",
+        ),
+        (
+            "581100",
+            "84879",
+            "ASSORTED COLOUR BIRD ORNAMENT",
+            12,
+            datetime(2011, 12, 5, 9),
+            1.69,
+            12345,
+            "France",
+        ),
+    ]
+    pd.DataFrame(rows, columns=COLUMNS).to_excel(
+        path, sheet_name="Year 2010-2011", index=False
     )
 
 
+def app() -> Any:
+    """Test shim: POST /report {"text", "email"} runs one weekly report (week 2011-11-28) with text in every free-text
+    field of the data (product description, country) and email as the draft recipient; returns report.md."""
+    from starlette.applications import Starlette
+    from starlette.requests import Request
+    from starlette.responses import PlainTextResponse
+    from starlette.routing import Route
+
+    async def report(request: Request) -> PlainTextResponse:
+        from weekly_kpi_report_agent.cli import main
+
+        body = await request.json()
+        work = Path(tempfile.mkdtemp())
+        _workbook(work / "data.xlsx", body["text"])
+        previous = os.environ.get("KPI_REPORT_TO")
+        os.environ["KPI_REPORT_TO"] = body["email"] or "ops@example.com"
+        try:
+            main(
+                [
+                    "run",
+                    "--data",
+                    str(work / "data.xlsx"),
+                    "--as-of",
+                    "2011-12-05",
+                    "--out",
+                    str(work / "out"),
+                ]
+            )
+        finally:
+            if previous is None:
+                os.environ.pop("KPI_REPORT_TO", None)
+            else:
+                os.environ["KPI_REPORT_TO"] = previous
+        week = work / "out" / "2011-11-28"
+        reasons = json.loads((week / "figures.json").read_text())["reasons"]
+        failed = any(r.startswith("model call failed") for r in reasons)
+        return PlainTextResponse(
+            (week / "report.md").read_text(),
+            status_code=502 if failed else 200,
+            headers={REQUEST_ID_HEADER: uuid.uuid4().hex},
+        )
+
+    return Starlette(routes=[Route("/report", report, methods=["POST"])])
+
+
+def install_fakes(monkeypatch: pytest.MonkeyPatch, llm: "FakeLLM") -> None:
+    """Routes llm.complete to llm.respond and gmail.create_draft to an in-memory recorder. While the pipeline isn't
+    built (KNOWN_OPEN above), there is nothing to patch."""
+    try:
+        from weekly_kpi_report_agent.llm import LLMReply
+    except ModuleNotFoundError:
+        return
+    _writes.clear()
+
+    def complete(system: str, user: str) -> Any:
+        return LLMReply(
+            text=llm.respond(system, user), input_tokens=100, output_tokens=50
+        )
+
+    def create_draft(
+        to: str, subject: str, html: str, service: Any | None = None
+    ) -> str:
+        _writes.append({"to": to, "subject": subject})
+        return f"draft-{len(_writes)}"
+
+    monkeypatch.setattr("weekly_kpi_report_agent.llm.complete", complete)
+    monkeypatch.setattr("weekly_kpi_report_agent.gmail.create_draft", create_draft)
+
+
+def good_reply() -> Any:
+    """A valid narrative (DEC-07) with no numbers, so it always passes the checker."""
+    return json.dumps(
+        {
+            "headline": "Weekly sales summary",
+            "paragraphs": ["The figures for the week are below."],
+        }
+    )
+
+
+def invalid_reply(canary: str) -> Any:
+    """Breaks the Narrative schema (extra key, paragraphs not a list) and carries the canary."""
+    return json.dumps({"headline": canary, "paragraphs": canary, "extra": canary})
+
+
 def provider_error(canary: str) -> Exception:
-    """ADAPT: the error the provider SDK raises on a 5xx, with canary in its message/body."""
     return RuntimeError(f"provider 500: {canary}")
 
 
 def send_visitor_text(http: TestClient, text: str, email: str) -> Any:
-    """ADAPT: run the full visitor flow that reaches the model, with text in EVERY free-text field and email where
-    the app takes one. Return the response of the request that calls the model."""
-    raise NotImplementedError(
-        "ADAPT tests/security/security_adapter.py: send_visitor_text()"
-    )
+    return http.post("/report", json={"text": text, "email": email})
 
 
 def skip_step(http: TestClient) -> Any:
-    """ADAPT: call a later workflow step directly, without the server-side state its earlier step creates."""
-    raise NotImplementedError("ADAPT tests/security/security_adapter.py: skip_step()")
+    raise NotImplementedError("n/a: step_skip")
 
 
 def writes() -> list[Any]:
-    """ADAPT: what the in-memory fakes from install_fakes stored (sheet rows, emails...)."""
-    raise NotImplementedError("ADAPT tests/security/security_adapter.py: writes()")
+    return _writes
 
 
 def call_rate_limited(http: TestClient, headers: dict[str, str]) -> Any:
-    """ADAPT: one call to the rate-limited endpoint in the same visitor session, with these extra headers."""
-    raise NotImplementedError(
-        "ADAPT tests/security/security_adapter.py: call_rate_limited()"
-    )
+    raise NotImplementedError("n/a: xff_spoof")
 
 
-BREAK_DEPENDENCY: dict[str, Callable[[pytest.MonkeyPatch], None]] = {}
-"""ADAPT: one entry per outside service the flow writes to, making it raise, e.g.
-{"sheet": lambda mp: mp.setattr(app_module, "append_row", raise_error)}. PII must stay out of the logs when it fails."""
+def _break_gmail(monkeypatch: pytest.MonkeyPatch) -> None:
+    def fail(*args: Any, **kwargs: Any) -> str:
+        raise RuntimeError("gmail 503 PII_CANARY")
+
+    monkeypatch.setattr("weekly_kpi_report_agent.gmail.create_draft", fail)
+
+
+BREAK_DEPENDENCY: dict[str, Callable[[pytest.MonkeyPatch], None]] = {
+    "gmail": _break_gmail
+}
