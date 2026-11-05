@@ -99,3 +99,14 @@ def test_sentences_are_split_on_full_stops() -> None:
     assert [(v.kind, v.sentence) for v in violations] == [
         ("unknown_number", "Orders 13 [F4].")
     ]
+
+
+def test_eval_clean_sentences_never_put_a_direction_word_on_a_shown_zero() -> None:
+    from weekly_kpi_report_agent.evalset import sentences
+
+    base = {f"F{i}": fig(f"F{i}", "1", 1.0) for i in range(1, 43)}
+    base["F12"] = fig("F12", "+0.0%", -0.01)
+    base["F11"] = fig("F11", "+5.0%", 5.0)
+    text = " ".join(sentences(base))
+    assert "+0.0% [F12]" not in text
+    assert "rose +5.0% [F11]" in text

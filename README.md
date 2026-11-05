@@ -32,7 +32,7 @@ xlsx ──► clean (dedupe, cancellations, adjustments, non-product codes, pri
 
 ## Measured
 
-`weekly-kpi-report eval-checker` builds a labelled set from real week figures. Narratives are generated in code: 60 clean ones and 60 with exactly one planted error, 10 of each type (`digit_swap`, `rounding`, `sign_flip`, `misattributed`, `invented`, `wrong_direction`). On the full dataset (weeks 2010-12-06..2011-11-28, seed 7) the result is **precision 1.000, recall 1.000 on 120 cases**.
+`weekly-kpi-report eval-checker` builds a labelled set from real week figures. Narratives are generated in code: 60 clean ones and 60 with exactly one planted error, 10 of each type (`digit_swap`, `rounding`, `sign_flip`, `misattributed`, `invented`, `wrong_direction`). On the full dataset (weeks 2010-12-06..2011-11-28, seed 7) the result is **precision 1.000, recall 1.000 on 120 cases**. Seeds 1–5 give the same result.
 
 The planted errors are synthetic and the checker is exact matching by design, so this number shows the checker does what it claims on those six error kinds. It says nothing about how often the LLM writes a clean narrative on its first try; the backfill summary (`backfill_summary.csv`, column `attempts`) records that.
 

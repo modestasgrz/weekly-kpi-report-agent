@@ -85,8 +85,9 @@ def run_week(
             if budget.spent_usd >= budget.cap_usd:
                 problems.append("cost cap reached")
                 break
+            message = user_message(week, feedback)
             try:
-                reply = llm.complete(SYSTEM, user_message(week, feedback))
+                reply = llm.complete(SYSTEM, message)
             except llm.CALL_ERRORS as e:
                 problems.append(f"model call failed: {type(e).__name__}")
                 break

@@ -258,15 +258,35 @@ def test_backfill_cap_is_shared_across_weeks(
     assert saved(out, WEEK_C)["attempts"] == 0
 
 
-def test_backfill_cap_zero_means_zero_calls_in_every_week(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+@pytest.mark.parametrize("cap", ["0", "-1", "nan", "inf", "abc"])
+def test_cost_cap_must_be_a_positive_finite_number(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    cap: str,
 ) -> None:
     llm, _ = install(monkeypatch, FakeLLM([GOOD]))
-    monkeypatch.setenv("KPI_COST_CAP_USD", "0")
+    monkeypatch.setenv("KPI_COST_CAP_USD", cap)
     out = tmp_path / "out"
-    assert backfill(book(tmp_path), out, WEEK_A, WEEK_C) == 0
+    assert backfill(book(tmp_path), out, WEEK_A, WEEK_C) == 1
     assert llm.calls == []
-    assert {r["reasons"] for r in read_summary(out)} == {"cost cap reached"}
+    assert not out.exists()
+    assert "error:" in capsys.readouterr().err
+
+
+def test_auth_oauth_error_exits_1_with_type_name_only(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    from oauthlib.oauth2.rfc6749.errors import AccessDeniedError
+
+    def deny() -> Path:
+        raise AccessDeniedError("user said no SECRET_TEXT")
+
+    monkeypatch.setattr("weekly_kpi_report_agent.gmail.authorize", deny)
+    assert main(["auth"]) == 1
+    err = capsys.readouterr().err
+    assert "AccessDeniedError" in err
+    assert "SECRET_TEXT" not in err
 
 
 def test_backfill_without_cap_pressure_spends_per_week_and_counts_violations(

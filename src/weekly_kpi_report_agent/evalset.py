@@ -65,7 +65,7 @@ def sentences(f: dict[str, Figure]) -> list[str]:
             (2, "year on year"),
         ]:
             c = f[f"F{int(fid[1:]) + offset}"]
-            if c.value:
+            if c.value and c.display not in ("+0.0%", "-0.0%"):
                 out.append(
                     f"{name} {'rose' if c.value > 0 else 'fell'} {c.display} [{c.id}] {when}."
                 )

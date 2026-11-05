@@ -323,3 +323,14 @@ def test_system_prompt_is_constant_across_attempts_and_weeks(
     _, llm = go(tmp_path, monkeypatch, [WRONG, WRONG, GOOD])
     assert len({system for system, _ in llm.calls}) == 1
     assert "£134" not in llm.calls[0][0]
+
+
+def test_bug_in_prompt_building_is_not_reported_as_model_failure(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def broken(*args: object) -> str:
+        raise KeyError("week_end")
+
+    monkeypatch.setattr("weekly_kpi_report_agent.pipeline.user_message", broken)
+    with pytest.raises(KeyError):
+        go(tmp_path, monkeypatch, [GOOD])

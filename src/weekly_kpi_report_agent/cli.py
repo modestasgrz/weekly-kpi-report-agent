@@ -1,5 +1,6 @@
 import argparse
 import csv
+import math
 import os
 import sys
 import zipfile
@@ -7,6 +8,7 @@ from datetime import date, timedelta
 from pathlib import Path
 
 from loguru import logger
+from oauthlib.oauth2.rfc6749.errors import OAuth2Error
 
 from weekly_kpi_report_agent import gmail
 from weekly_kpi_report_agent.data import clean, missing_columns, read
@@ -62,12 +64,29 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         if args.command == "auth":
-            print(f"token written to {gmail.authorize()}")
+            try:
+                print(f"token written to {gmail.authorize()}")
+            except (OAuth2Error, Warning) as e:
+                print(
+                    f"error: Gmail authorization failed ({type(e).__name__})",
+                    file=sys.stderr,
+                )
+                return 1
             return 0
         if args.command == "download":
             print(f"dataset at {download(args.dest)}")
             return 0
-        budget = Budget(cap_usd=float(os.environ.get("KPI_COST_CAP_USD", "5.0")))
+        try:
+            cap = float(os.environ.get("KPI_COST_CAP_USD", "5.0"))
+        except ValueError:
+            cap = math.nan
+        if not math.isfinite(cap) or cap <= 0:
+            print(
+                "error: KPI_COST_CAP_USD must be a positive number of US dollars",
+                file=sys.stderr,
+            )
+            return 1
+        budget = Budget(cap_usd=cap)
         sheets = read(args.data)
         missing = missing_columns(sheets)
         if missing:
