@@ -33,12 +33,7 @@ NOT_APPLICABLE: dict[str, str] = {
     "image_lock": "no deploy image: runs locally / cron example only, never deployed",
 }
 # A real hole the owner accepts for now (shows as xfail with the reason, listed in the PR). Fix it, then remove the entry.
-KNOWN_OPEN: dict[str, str] = {
-    "pii_logs": "pipeline not built yet (spec weekly-kpi-report, PART-A); wired below, remove this entry once PART-A merges",
-    "prompt_injection": "pipeline not built yet (spec weekly-kpi-report, PART-A); wired below, remove this entry once PART-A merges",
-    "model_output": "pipeline not built yet (spec weekly-kpi-report, PART-A); wired below, remove this entry once PART-A merges",
-    "provider_error": "pipeline not built yet (spec weekly-kpi-report, PART-A); wired below, remove this entry once PART-A merges",
-}
+KNOWN_OPEN: dict[str, str] = {}
 
 RATE_LIMIT = 5  # ADAPT: requests one session may make to the rate-limited endpoint before it gets 429
 CORS_PATH = "/ADAPT"  # ADAPT: a route browsers call cross-origin
@@ -141,12 +136,9 @@ def app() -> Any:
 
 
 def install_fakes(monkeypatch: pytest.MonkeyPatch, llm: "FakeLLM") -> None:
-    """Routes llm.complete to llm.respond and gmail.create_draft to an in-memory recorder. While the pipeline isn't
-    built (KNOWN_OPEN above), there is nothing to patch."""
-    try:
-        from weekly_kpi_report_agent.llm import LLMReply
-    except ModuleNotFoundError:
-        return
+    """Routes llm.complete to llm.respond and gmail.create_draft to an in-memory recorder."""
+    from weekly_kpi_report_agent.llm import LLMReply
+
     _writes.clear()
 
     def complete(system: str, user: str) -> Any:
