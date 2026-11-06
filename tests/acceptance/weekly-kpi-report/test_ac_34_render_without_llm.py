@@ -1,4 +1,4 @@
-"""AC-34 — run saves narrative.json; `render --from <week dir>` rebuilds the reports (and with --draft the Gmail draft) without calling the model, re-checking the saved narrative; a narrative that fails the check is withheld (needs_review, exit 2)."""
+"""AC-34 — run saves narrative.json; `render --from <week dir>` rebuilds the reports (and with --draft the Gmail draft) without calling the model, re-checking the saved narrative; a narrative that fails the check is withheld (needs_review, exit 2), and fixing it renders ok again."""
 
 import json
 from pathlib import Path
@@ -41,4 +41,8 @@ def test_ac_34_render_without_llm(
     assert r["status"] == "needs_review"
     assert "narrative failed number check on re-render" in r["reasons"]
     assert "Narrative withheld" in (week / "report.md").read_text()
+
+    (week / "narrative.json").write_text(json.dumps(json.loads(GOOD)))
+    assert cli("render", "--from", str(week)) == 0
+    assert report(out)["status"] == "ok"
     assert llm.calls == []
