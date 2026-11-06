@@ -424,10 +424,10 @@ def test_dq_counts_only_cover_lines_dated_in_the_week() -> None:
     ]
 
 
-def test_large_revenue_uses_thousands_commas() -> None:
+def test_large_revenue_uses_narrow_space_thousands() -> None:
     by_id, _ = figures([line("1", "10001", "A", 1000, at("2011-11-29"), 1234.567)])
     assert displays(by_id, "F3", "F5", "F26") == [
-        "£1,234,567",
-        "£1,234,567.00",
-        "£1,234,567",
+        "£1\u202f234\u202f567",
+        "£1\u202f234\u202f567.00",
+        "£1\u202f234\u202f567",
     ]

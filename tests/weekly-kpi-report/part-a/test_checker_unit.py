@@ -9,7 +9,7 @@ def fig(fid: str, display: str, value: float | None = 1.0, label: str = "") -> F
 
 
 FIGURES = [
-    fig("F3", "£1,234"),
+    fig("F3", "£1\u202f234"),
     fig("F4", "12"),
     fig("F11", "-6.8%", -6.8),
     fig("F12", "+0.0%", 0.0),
@@ -49,11 +49,15 @@ def test_curly_quotes_and_full_stop_inside_label_are_masked() -> None:
 
 
 def test_non_ascii_numerals_are_flagged() -> None:
-    assert kinds("Revenue rose ½ point to £1,234 [F3].") == [("unknown_number", "½")]
+    assert kinds("Revenue rose ½ point to £1\u202f234 [F3].") == [
+        ("unknown_number", "½")
+    ]
 
 
 def test_trailing_comma_is_not_part_of_the_token() -> None:
-    assert kinds("Revenue was £1,234, up.") == [("missing_reference", "£1,234")]
+    assert kinds("Revenue was £1\u202f234, up.") == [
+        ("missing_reference", "£1\u202f234")
+    ]
 
 
 def test_change_shown_as_zero_ignores_direction() -> None:
@@ -95,7 +99,9 @@ def test_direction_word_inside_quoted_label_is_ignored() -> None:
 
 
 def test_sentences_are_split_on_full_stops() -> None:
-    violations = check_narrative("Revenue was £1,234 [F3]. Orders 13 [F4].", FIGURES)
+    violations = check_narrative(
+        "Revenue was £1\u202f234 [F3]. Orders 13 [F4].", FIGURES
+    )
     assert [(v.kind, v.sentence) for v in violations] == [
         ("unknown_number", "Orders 13 [F4].")
     ]

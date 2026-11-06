@@ -29,7 +29,8 @@ xlsx ──► clean (dedupe, cancellations, adjustments, non-product codes, pri
   - per-run cost cap (`KPI_COST_CAP_USD`, default $5)
   - Gmail draft fails (the local report is still written)
   - large cancellations: cancelled product value ≥ 25% of revenue (revenue counts orders before cancellations, so a big order cancelled the same week would otherwise look like a sales jump)
-- **The report** (`report.html`, also the Gmail draft body): email-safe HTML, inline styles only, no images or external resources. A "Needs review" banner in plain words when something is off, then the headline, four key numbers with the change vs last week, the narrative with small source markers, "Worth a look", top products and countries, and the sources and all figures folded away at the bottom.
+- **Numbers**: thousands are separated by a narrow no-break space (`£328 713`), never a comma, so they can't be misread as decimals; decimals use a point (`£950.34`, `14.3%`). The checker accepts exactly that form and rejects a comma-grouped or split number.
+- **The report** (`report.html`, also the Gmail draft body): email-safe HTML in a dark charcoal-to-forest look with cream text and one amber accent, inline styles only, no images or external resources, a solid dark `bgcolor` on every content cell so it stays readable where gradients are stripped. A "Needs review" banner in plain words when something is off, then the headline, four key numbers with the change vs last week, the narrative with small source markers, "Worth a look", top products and countries, and the sources and all figures folded away at the bottom.
 - **Untrusted text**: product descriptions come from the data. They reach the model only inside one `<week-data-…>` block whose tag ends in 16 random hex characters, new on every message (so a description can't forge the closing tag), cut to 100 characters, with `<` and `>` escaped. The system prompt is a constant. Model output is parsed by a Pydantic schema and then checked.
 
 ## Measured
@@ -44,6 +45,13 @@ The planted errors are synthetic and the checker is exact matching by design, so
 uv sync
 export ANTHROPIC_API_KEY=...                            # never committed
 tools/demo.sh                                           # downloads the data if needed, runs the 2 demo weeks locally, opens both reports
+```
+
+Re-render a saved week without calling the model ($0): rebuilds `report.md`/`report.html` from its `figures.json` + `narrative.json`, re-checks the narrative with the number checker, and with `--draft` also creates the Gmail draft:
+
+```bash
+uv run weekly-kpi-report render --from out/demo/2011-09-19            # local report only
+uv run weekly-kpi-report render --from out/demo/2011-09-19 --draft    # + Gmail draft
 ```
 
 `tools/demo.sh` runs week 2011-09-19 (a normal week, status `ok`) and week 2011-12-05 (flagged "Needs review"), writes `out/demo/<week>/report.html|md|figures.json` and never touches Gmail. Estimated about $0.03 per run.
@@ -77,12 +85,12 @@ Real runs on 2026-11-06 with `claude-sonnet-5-5`, local output only. The data is
 
 | Week | Status | What the report says |
 | --- | --- | --- |
-| 2011-09-19 | `ok`, 1 attempt | Revenue £328,713, +46.8% vs last week, orders 463 (+28.6%); "Worth a look" lists the four unusual moves |
-| 2011-12-05 | `needs_review`, 1–2 attempts | Banner: data stops on Friday 2011-12-09 (partial week), and £172,782 of products were cancelled against £483,725 revenue. In the latest run the headline flags the cancellations ("revenue looks high but much of it was cancelled"); an earlier run before the prompt rule still headlined the jump |
+| 2011-09-19 | `ok`, 1 attempt | Revenue £328 713, +46.8% vs last week, orders 463 (+28.6%); "Worth a look" lists the four unusual moves |
+| 2011-12-05 | `needs_review`, 1–2 attempts | Banner: data stops on Friday 2011-12-09 (partial week), and £172 782 of products were cancelled against £483 725 revenue. In the latest run the headline flags the cancellations ("revenue looks high but much of it was cancelled"); an earlier run before the prompt rule still headlined the jump |
 
-- **Why week 2011-12-05 matters:** its top "sale", PAPER CRAFT, LITTLE BIRDIE at £168,470, is one order of 80,995 units cancelled 12 minutes later (invoices 581483 / C581484). Revenue is gross, so without the cancellation flag the week reads as a +56.4% jump. The report flags the cancellations but does not link them to that product, and the narrative may still explain the jump wrongly (the latest run's narrative says "bigger baskets"); the checker checks numbers, not framing.
+- **Why week 2011-12-05 matters:** its top "sale", PAPER CRAFT, LITTLE BIRDIE at £168 470, is one order of 80 995 units cancelled 12 minutes later (invoices 581483 / C581484). Revenue is gross, so without the cancellation flag the week reads as a +56.4% jump. The report flags the cancellations but does not link them to that product, and the narrative may still explain the jump wrongly (the latest run's narrative says "bigger baskets"); the checker checks numbers, not framing.
 - **Number check on real narratives:** 8 real runs of the two demo weeks across this round's code versions: 7 passed on the first attempt, 1 needed one retry and then passed, none was withheld. Estimated cost about $0.014 per week (the code's estimate at $2 / $10 per million input / output tokens).
-- **Full backfill (53 weeks, 2010-12-06..2011-12-05, run 2026-11-06):** 50 `ok`, 2 `needs_review`, 1 `no_data`. The 52 weeks with sales got a narrative that passed the number check: 51 on the first attempt, 1 (2011-08-29) after one retry, none withheld. `needs_review`: 2011-01-17 (large cancellations: £78,841 against £209,331 revenue) and 2011-12-05 (partial week + large cancellations). `no_data`: 2010-12-27 (the week between Christmas and New Year, no sales lines). Logged cost $0.77 (the code's estimate at $2 / $10 per million input / output tokens).
+- **Full backfill (53 weeks, 2010-12-06..2011-12-05, run 2026-11-06):** 50 `ok`, 2 `needs_review`, 1 `no_data`. The 52 weeks with sales got a narrative that passed the number check: 51 on the first attempt, 1 (2011-08-29) after one retry, none withheld. `needs_review`: 2011-01-17 (large cancellations: £78 841 against £209 331 revenue) and 2011-12-05 (partial week + large cancellations). `no_data`: 2010-12-27 (the week between Christmas and New Year, no sales lines). Logged cost $0.77 (the code's estimate at $2 / $10 per million input / output tokens).
 - **Large-cancellation flag:** on the full dataset it fires on 2 of 104 weeks (2011-01-17 and 2011-12-05), both real giant orders cancelled the same week.
 - **Checker eval:** precision 1.000, recall 1.000 on 120 planted cases (see Measured).
 
@@ -91,9 +99,11 @@ Real runs on 2026-11-06 with `claude-sonnet-5-5`, local output only. The data is
 - The checker checks numbers and direction words only: not wording outside the closed list ("best week ever", "slightly", "surged"), wrong product or country names, claims without numbers, or spelled-out numbers ("five").
 - Revenue is gross: cancellations are shown next to it (cancelled value, revenue after cancellations) and flagged at 25% of revenue or more, not netted out, and a cancellation is not matched to the week of its original order.
 - Wholesale and retail customers are mixed, so the average order value blends both. No margin, stock or returns data exists in this dataset.
-- Many product lines have no customer ID (2,517 of 13,181 in week 2011-09-19, 6,183 of 17,225 in week 2011-12-05); the report says so, and "Customers" counts only lines with one.
+- Many product lines have no customer ID (2 517 of 13 181 in week 2011-09-19, 6 183 of 17 225 in week 2011-12-05); the report says so, and "Customers" counts only lines with one.
 - "Sources" and "All figures" use `<details>`, which folds them away in a browser; email-client support varies and a real Gmail draft has not been checked yet.
 - Failure handling seen for real: when the API account ran out of credit mid-run, every affected week was still written with figures only and flagged `needs_review` ("model call failed: BadRequestError").
+- Mail clients turn the two licence URLs in the footer into links in their own blue, which is low-contrast on the dark page; the footer text must stay exact (attribution), so it isn't restyled.
+- The narrative prompt now asks the model to copy the U+202F separator exactly; this was not re-run against the live model after the format change (no credits), so first-attempt pass rates under the new format are unmeasured.
 - The schedule files are examples; nothing is installed, and a human presses send on every draft.
 
 ## Development

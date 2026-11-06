@@ -14,7 +14,8 @@ from weekly_kpi_report_agent import gmail
 from weekly_kpi_report_agent.data import clean, missing_columns, read
 from weekly_kpi_report_agent.download import ChecksumError, download
 from weekly_kpi_report_agent.evalset import evaluate
-from weekly_kpi_report_agent.pipeline import Budget, run_week
+from weekly_kpi_report_agent.models import WeekReport
+from weekly_kpi_report_agent.pipeline import Budget, render_week, run_week
 
 EXIT_CODES = {"ok": 0, "needs_review": 2, "no_data": 3}
 
@@ -54,6 +55,11 @@ def main(argv: list[str] | None = None) -> int:
         p.add_argument("--out", type=Path, default=Path("out"))
         if name == "eval-checker":
             p.add_argument("--seed", type=int, default=7)
+    p = sub.add_parser(
+        "render", help="rebuild a saved week's reports (and draft) without the model"
+    )
+    p.add_argument("--from", dest="source", type=Path, required=True)
+    p.add_argument("--draft", action="store_true")
     sub.add_parser(
         "auth", help="authorize Gmail drafts (gmail.compose scope) for the demo account"
     )
@@ -73,6 +79,22 @@ def main(argv: list[str] | None = None) -> int:
                 )
                 return 1
             return 0
+        if args.command == "render":
+            try:
+                saved = WeekReport.model_validate_json(
+                    (args.source / "figures.json").read_text()
+                )
+            except (OSError, ValueError):
+                print(f"error: no run in {args.source}", file=sys.stderr)
+                return 1
+            try:
+                week = render_week(saved, args.source, args.draft)
+            except ValueError:
+                print(
+                    f"error: invalid narrative.json in {args.source}", file=sys.stderr
+                )
+                return 1
+            return EXIT_CODES[week.status]
         if args.command == "download":
             print(f"dataset at {download(args.dest)}")
             return 0
