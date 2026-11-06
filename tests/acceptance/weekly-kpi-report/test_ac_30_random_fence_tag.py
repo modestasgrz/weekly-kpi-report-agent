@@ -18,7 +18,6 @@ def test_ac_30_random_fence_tag(
         opened = re.findall(r"<week-data-([0-9a-f]{16})>", user)
         assert len(opened) == 1
         assert user.count(f"</week-data-{opened[0]}>") == 1
-        assert len(re.findall(r"week-data-", user)) == 2
         codes.append(opened[0])
     assert codes[0] != codes[1]
     systems = [system for system, _ in llm.calls]

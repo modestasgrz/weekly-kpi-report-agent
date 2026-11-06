@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 from kpi_helpers import GOOD, NO_NUMBERS, FakeLLM, install, run_week, write_workbook
 
-LINE = "Data: Online Retail II (Chen, D., 2012)"
+LINE = "Data: Online Retail II (Chen, D., 2012), UCI Machine Learning Repository, https://doi.org/10.24432/C5CG6D — licensed CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/)."
 
 
 def test_ac_32_report_layout(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -14,6 +14,7 @@ def test_ac_32_report_layout(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) ->
     out = tmp_path / "out"
     run_week(write_workbook(tmp_path / "f.xlsx"), out)
     page = (out / "2011-11-28" / "report.html").read_text()
+    body = page[page.index("<body") :]
     md = (out / "2011-11-28" / "report.md").read_text()
     for banned in ["<style", "<script", "<link", "<img", "src=", "url(", "class="]:
         assert not re.search(re.escape(banned), page, re.IGNORECASE), banned
@@ -21,11 +22,11 @@ def test_ac_32_report_layout(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) ->
     for change in ["+39.8%", "+50.0%", "-6.8%", "+100.0%"]:
         assert f"{change} vs last week" in page, change
     order = [
-        page.index("Revenue reached £143"),
-        page.index("vs last week"),
-        page.index("led with £77"),
-        page.index("All figures"),
-        page.index(LINE),
+        body.index("Revenue reached £143"),
+        body.index("vs last week"),
+        body.index("led with £77"),
+        body.index("All figures"),
+        body.index(LINE),
     ]
     assert order == sorted(order)
     assert "Needs review" not in page
@@ -40,4 +41,5 @@ def test_ac_32_report_layout(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) ->
     for text in [page, md]:
         assert "Needs review" in text
         assert "Data stops on Monday 2011-12-05" in text
-    assert page.index("Needs review") < page.index("Weekly sales summary")
+    body = page[page.index("<body") :]
+    assert body.index("Needs review") < body.index("Weekly sales summary")
