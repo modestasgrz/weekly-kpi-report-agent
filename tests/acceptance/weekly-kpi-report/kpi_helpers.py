@@ -67,11 +67,14 @@ LINES_2010_2011: list[tuple[Any, ...]] = [
 
 
 def write_workbook(
-    path: Path, rename: dict[str, str] | None = None, drop: list[str] | None = None
+    path: Path,
+    rename: dict[str, str] | None = None,
+    drop: list[str] | None = None,
+    extra: list[tuple[Any, ...]] | None = None,
 ) -> Path:
     sheets: dict[str, list[tuple[Any, ...]]] = {
         "Year 2009-2010": [L12],
-        "Year 2010-2011": LINES_2010_2011,
+        "Year 2010-2011": LINES_2010_2011 + (extra or []),
     }
     with pd.ExcelWriter(path) as writer:
         for name, rows in sheets.items():
