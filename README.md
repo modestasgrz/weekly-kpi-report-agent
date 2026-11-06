@@ -46,7 +46,7 @@ export ANTHROPIC_API_KEY=...                            # never committed
 tools/demo.sh                                           # downloads the data if needed, runs the 2 demo weeks locally, opens both reports
 ```
 
-`tools/demo.sh` runs week 2011-09-19 (a normal week, status `ok`) and week 2011-12-05 (flagged "Needs review"), writes `out/demo/<week>/report.html|md|figures.json` and never touches Gmail. About $0.03 per run.
+`tools/demo.sh` runs week 2011-09-19 (a normal week, status `ok`) and week 2011-12-05 (flagged "Needs review"), writes `out/demo/<week>/report.html|md|figures.json` and never touches Gmail. Estimated about $0.03 per run.
 
 Every command:
 
@@ -73,14 +73,15 @@ Schedule examples, which the code doesn't install: `deploy/com.portfolio.weekly-
 
 ## Results
 
-Real runs on 2026-11-06 with `claude-sonnet-5-5`, local output only. The data is the public UCI Online Retail II set, a UK online giftware retailer in 2009–2011, so every date is in 2011; nothing here is live shop data.
+Real runs on 2026-11-06 with `claude-sonnet-5-5`, local output only. The data is the public UCI Online Retail II set, a UK online giftware retailer from 2009-12 to 2011-12, so all dates are 2009–2011; nothing here is live shop data.
 
 | Week | Status | What the report says |
 | --- | --- | --- |
 | 2011-09-19 | `ok`, 1 attempt | Revenue £328,713, +46.8% vs last week, orders 463 (+28.6%); "Worth a look" lists the four unusual moves |
-| 2011-12-05 | `needs_review`, 1–2 attempts | Banner: data stops on Friday 2011-12-09 (partial week), and £172,782 of products were cancelled against £483,725 revenue. The week's top "sale", PAPER CRAFT, LITTLE BIRDIE at £168,470, was one order cancelled 12 minutes later; the headline says so instead of celebrating a +56.4% jump |
+| 2011-12-05 | `needs_review`, 1–2 attempts | Banner: data stops on Friday 2011-12-09 (partial week), and £172,782 of products were cancelled against £483,725 revenue. In the latest run the headline flags the cancellations ("revenue looks high but much of it was cancelled"); an earlier run before the prompt rule still headlined the jump |
 
-- **Number check on real narratives:** 23 narratives (15 backfill weeks 2010-12-06..2011-03-21 plus 8 runs of the two demo weeks): 22 passed on the first attempt, 1 needed one retry and then passed, none was withheld. Cost about $0.014 per week.
+- **Why week 2011-12-05 matters:** its top "sale", PAPER CRAFT, LITTLE BIRDIE at £168,470, is one order of 80,995 units cancelled 12 minutes later (invoices 581483 / C581484). Revenue is gross, so without the cancellation flag the week reads as a +56.4% jump. The report flags the cancellations but does not link them to that product, and the narrative may still explain the jump wrongly (one run said "bigger baskets"); the checker checks numbers, not framing.
+- **Number check on real narratives:** 23 narratives across this round's code versions (15 backfill weeks 2010-12-06..2011-03-21 plus 8 runs of the two demo weeks): 22 passed on the first attempt, 1 needed one retry and then passed, none was withheld. Estimated cost about $0.014 per week (the code's estimate at $2 / $10 per million input / output tokens).
 - **Large-cancellation flag:** on the full dataset it fires on 2 of 104 weeks (2011-01-17 and 2011-12-05), both real giant orders cancelled the same week.
 - **Failure path seen for real:** the backfill ran out of API credit at week 2011-03-28. Every later week was still written, flagged `needs_review` with "model call failed: BadRequestError" and figures only, and the run finished with exit 0.
 - **Checker eval:** precision 1.000, recall 1.000 on 120 planted cases (see Measured).
@@ -88,10 +89,10 @@ Real runs on 2026-11-06 with `claude-sonnet-5-5`, local output only. The data is
 ## Known limits
 
 - The checker checks numbers and direction words only: not wording outside the closed list ("best week ever", "slightly", "surged"), wrong product or country names, claims without numbers, or spelled-out numbers ("five").
-- Revenue is gross: cancellations are shown next to it (cancelled value, revenue after cancellations) and flagged above 25%, not netted out, and a cancellation is not matched to the week of its original order.
+- Revenue is gross: cancellations are shown next to it (cancelled value, revenue after cancellations) and flagged at 25% of revenue or more, not netted out, and a cancellation is not matched to the week of its original order.
 - Wholesale and retail customers are mixed, so the average order value blends both. No margin, stock or returns data exists in this dataset.
 - Many product lines have no customer ID (2,517 of 13,181 in week 2011-09-19, 6,183 of 17,225 in week 2011-12-05); the report says so, and "Customers" counts only lines with one.
-- "Sources" and "All figures" fold away in browsers and Apple Mail; Gmail shows them open at the bottom.
+- "Sources" and "All figures" use `<details>`, which folds them away in a browser; email-client support varies and a real Gmail draft has not been checked yet.
 - The schedule files are examples; nothing is installed, and a human presses send on every draft.
 
 ## Development
