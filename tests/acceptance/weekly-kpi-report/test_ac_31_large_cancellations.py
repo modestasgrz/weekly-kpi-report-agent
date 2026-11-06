@@ -1,4 +1,4 @@
-"""AC-31 — Given the fixture, when Run W, then F43 = "£5" (cancelled_value, source names 1 product cancellation lines) and status ok, and a week without cancellations has F43 = "£0"; with an extra £51 cancellation line, F43 = "£56", needs_review with reason "large cancellations: £56 cancelled against £143 revenue", exit 2."""
+"""AC-31 — Given the fixture, when Run W, then F43 = "£5" (cancelled_value, source names 1 product cancellation lines) F44 = "£137" (net_revenue) and status ok, and a week without cancellations has F43 = "£0"; with an extra £51 cancellation line, F43 = "£56", F44 = "£86", needs_review with reason "large cancellations: £56 cancelled against £143 revenue", exit 2."""
 
 from pathlib import Path
 
@@ -27,6 +27,7 @@ def test_ac_31_large_cancellations(
     f = figs(base)
     assert (f["F43"]["key"], f["F43"]["display"]) == ("cancelled_value", "£5")
     assert "1 product cancellation lines" in f["F43"]["source"]
+    assert (f["F44"]["key"], f["F44"]["display"]) == ("net_revenue", "£137")
     assert report(base)["status"] == "ok"
 
     install(monkeypatch, FakeLLM([GOOD]))
@@ -39,6 +40,7 @@ def test_ac_31_large_cancellations(
     code = run_week(write_workbook(tmp_path / "g.xlsx", extra=[EXTRA]), out)
     r = report(out)
     assert figs(out)["F43"]["display"] == "£56"
+    assert figs(out)["F44"]["display"] == "£86"
     assert r["status"] == "needs_review"
     assert "large cancellations: £56 cancelled against £143 revenue" in r["reasons"]
     assert code == 2
