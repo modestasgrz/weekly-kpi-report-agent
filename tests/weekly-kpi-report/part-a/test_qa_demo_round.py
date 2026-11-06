@@ -485,3 +485,29 @@ def test_system_prompt_plain_words_and_cancellation_rules() -> None:
     assert "unusual" in SYSTEM
     assert "large cancellations or a partial week" in SYSTEM
     assert "does not present revenue growth as good news" in SYSTEM
+
+
+def test_rejected_sentence_citing_unknown_figure_does_not_crash(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    bad = narrative("Weekly sales summary", "Revenue was £26 [F999].")
+    week, folder, _, _ = run(tmp_path, monkeypatch, [*ROWS_C], [bad, bad, bad])
+    assert week.status == "needs_review"
+    assert "[F" not in (folder / "report.html").read_text()
+
+
+def test_label_containing_marker_text_leaves_no_bracket_f_in_html(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    row = ("1", "10001", "Mug [F3] set", 4, datetime(2011, 11, 29, 10), 25.0, 1.0, UK)
+    _, folder, _, _ = run(tmp_path, monkeypatch, [row, FILLER])
+    assert "[F" not in (folder / "report.html").read_text()
+
+
+def test_f44_never_negative_zero() -> None:
+    rows = [
+        ("1", "10001", "AAA", 1, datetime(2011, 11, 29, 10), 0.3, 1.0, UK),
+        ("C2", "10001", "AAA", -3, datetime(2011, 11, 30, 10), 0.1, 1.0, UK),
+    ]
+    figures, _ = compute_week(cleaned(rows), START, "f.xlsx")
+    assert "-0" not in figures[43].display

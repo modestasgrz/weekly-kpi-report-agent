@@ -312,11 +312,12 @@ def compute_week(
         money(cancelled_value),
         f"−sum(Quantity×Price) over {len(cancelled):,} product cancellation lines, {rng}, {file_name}",
     )
+    net = round(cur.revenue - cancelled_value, 6) + 0.0
     add(
         "net_revenue",
         "Revenue after product cancellations (GBP)",
-        cur.revenue - cancelled_value,
-        money(cur.revenue - cancelled_value),
+        net,
+        money(net),
         f"product revenue (F3) − cancelled product value (F43), {rng}, {file_name}",
     )
     return figures, anomalies

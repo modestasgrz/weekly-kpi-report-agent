@@ -8,7 +8,7 @@ Weekly sales KPI report where every number is computed in code, the LLM only wri
 
 ```
 xlsx ──► clean (dedupe, cancellations, adjustments, non-product codes, price ≤ 0)
-     ──► 42 figures for the ISO week, computed in pandas, each with a display string + source
+     ──► 44 figures for the ISO week, computed in pandas, each with a display string + source
      ──► Claude (claude-sonnet-5-5) writes headline + paragraphs, copying figure strings with [Fn] markers
      ──► number checker: every number must equal the display of the figure its [Fn] points to,
          and rose/fell-type words must match the sign of a change figure
@@ -17,7 +17,7 @@ xlsx ──► clean (dedupe, cancellations, adjustments, non-product codes, pri
                 "[NEEDS REVIEW]" with the rejected sentences quoted
 ```
 
-- **Figures** (F1–F42): revenue, orders, AOV, units, customers, new vs returning, cancellation rate. Each one is compared with the previous week, the 4-week average and the same ISO week a year earlier. Also the top 5 products and countries, and data-quality counts. Every figure carries its source: the formula, the line count, the date range and the file.
+- **Figures** (F1–F44): revenue, orders, AOV, units, customers, new vs returning, cancellation rate. Each one is compared with the previous week, the 4-week average and the same ISO week a year earlier. Also the top 5 products and countries, and data-quality counts. Every figure carries its source: the formula, the line count, the date range and the file.
 - **Checker** (`checker.py`): finds every number in the text. It fails a number with no `[Fn]` marker (`missing_reference`), a number that belongs to a different figure (`wrong_reference`), and a number that isn't in the set at all (`unknown_number`). It also fails a direction word that contradicts the sign of a change figure (`wrong_direction`). Product and country names in double quotes are exempt, so "REGENCY CAKESTAND 3 TIER" is not read as the number 3.
 - **Statuses**: `ok`, `needs_review` (with reasons), `no_data`. Exit codes 0 / 2 / 3, so a scheduled run is visibly non-zero when a human has to look.
 - **Failure paths, each one tested**:

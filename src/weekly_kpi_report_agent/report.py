@@ -54,12 +54,6 @@ def change_words(figure: Figure) -> str:
     return "no comparison" if figure.value is None else f"{figure.display} vs last week"
 
 
-def arrow(figure: Figure) -> str:
-    if not figure.value or figure.display in ("+0.0%", "-0.0%"):
-        return ""
-    return "▲ " if figure.value > 0 else "▼ "
-
-
 def render(
     week: WeekReport, narrative: Narrative | None, rejected: list[str]
 ) -> tuple[str, str]:
@@ -74,6 +68,7 @@ def render(
             m
             for text in (narrative.texts() if narrative else rejected)
             for m in MARKERS.findall(text)
+            if m in figures
         },
         key=lambda i: int(i[1:]),
     )
@@ -156,7 +151,7 @@ def render(
                 f'<div style="display:inline-block;vertical-align:top;width:120px;margin:0 8px 10px 0;padding:12px;border:1px solid {RULE};border-radius:6px;">'
                 f'<div style="font-size:12px;color:{MUTED};">{label}</div>'
                 f'<div style="margin:2px 0 4px;font-family:{SERIF};font-size:22px;color:{INK};">{html.escape(value.display)}</div>'
-                f'<div style="font-size:12px;color:{FAINT if partial else INK};">{arrow(wow)}{html.escape(change_words(wow))}</div>'
+                f'<div style="font-size:12px;color:{FAINT if partial else INK};">{"" if wow.value is None or wow.display in ("+0.0%", "-0.0%") else "▲ " if wow.value > 0 else "▼ "}{html.escape(change_words(wow))}</div>'
                 f'<div style="margin-top:2px;font-size:11px;color:{FAINT};">vs 4-wk avg {html.escape(vs4w)} · vs last year {html.escape(yoy)}</div>'
                 "</div>"
             )
@@ -256,7 +251,7 @@ def render(
     page.append(
         f'<p style="{SMALL}margin:28px 0 0;padding-top:12px;border-top:1px solid {RULE};">{html.escape(ATTRIBUTION)}</p>'
     )
-    body = "\n".join(page)
+    body = "\n".join(page).replace("[", "&#91;")
     return (
         "\n".join(md),
         (
