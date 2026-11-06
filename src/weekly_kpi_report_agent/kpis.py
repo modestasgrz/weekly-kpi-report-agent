@@ -4,6 +4,7 @@ from decimal import ROUND_HALF_EVEN, ROUND_HALF_UP, Decimal
 import pandas as pd
 from pydantic import BaseModel
 
+from weekly_kpi_report_agent.data import PRODUCT_CODE
 from weekly_kpi_report_agent.models import Figure
 
 MAX_LABEL = 100
@@ -37,7 +38,7 @@ def rounded(value: float, places: str) -> Decimal:
 
 
 def money(value: float) -> str:
-    return f"£{rounded(value, '1'):,}"
+    return f"£{rounded(value, '1') + 0:,}"
 
 
 def count(value: float) -> str:
@@ -88,7 +89,7 @@ def ranked(products: pd.DataFrame, by: str) -> list[tuple[str, float, int]]:
 def compute_week(
     df: pd.DataFrame, start: date, file_name: str
 ) -> tuple[list[Figure], list[str]]:
-    """The 42 figures of DEC-05 for the ISO week starting `start`, plus the anomaly keys of DEC-04."""
+    """The 44 figures of DEC-05 for the ISO week starting `start`, plus the anomaly keys of DEC-04."""
     end = start + timedelta(days=6)
     rng = f"{start}..{end}"
     week = window(df, start)
@@ -299,5 +300,24 @@ def compute_week(
         cur.lines,
         count(cur.lines),
         f"lines in {rng} kept after the cleaning rules (DEC-03), {file_name}",
+    )
+    cancelled = week[
+        (week["bucket"] == "cancellation") & week["StockCode"].str.match(PRODUCT_CODE)
+    ]
+    cancelled_value = abs(float(cancelled["revenue"].sum()))
+    add(
+        "cancelled_value",
+        "Cancelled product value (GBP)",
+        cancelled_value,
+        money(cancelled_value),
+        f"−sum(Quantity×Price) over {len(cancelled):,} product cancellation lines, {rng}, {file_name}",
+    )
+    net = cur.revenue - cancelled_value
+    add(
+        "net_revenue",
+        "Revenue after product cancellations (GBP)",
+        net,
+        money(net),
+        f"product revenue (F3) − cancelled product value (F43), {rng}, {file_name}",
     )
     return figures, anomalies

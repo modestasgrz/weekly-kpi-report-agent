@@ -142,8 +142,8 @@ def evaluate(
     pools = []
     for start in weeks:
         figures, _ = compute_week(df, start, file_name)
-        if figures[-1].value:
-            by_id = {f.id: f for f in figures}
+        by_id = {f.id: f for f in figures}
+        if by_id["F42"].value:
             pools.append((figures, by_id, sentences(by_id)))
     if not pools:
         raise ValueError("no week with sales data in the range")
