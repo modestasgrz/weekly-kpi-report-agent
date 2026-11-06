@@ -8,7 +8,7 @@ from weekly_kpi_report_agent.kpis import change, compute_week, money, rounded
 
 def test_half_up_rounding() -> None:
     assert money(76.5) == "£77"
-    assert money(1234567.49) == "£1,234,567"
+    assert money(1234567.49) == "£1\u202f234\u202f567"
     assert rounded(0.125, "0.01") == Decimal("0.13")
     assert rounded(12.25, "0.1") == Decimal("12.3")
     assert rounded(130274.65 / 242, "0.01") == Decimal("538.33")

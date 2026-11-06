@@ -23,7 +23,7 @@ from edge_support import (
 from weekly_kpi_report_agent.kpis import compute_week
 from weekly_kpi_report_agent.models import WeekReport
 from weekly_kpi_report_agent.pipeline import SYSTEM, Budget, run_week
-from weekly_kpi_report_agent.report import FAINT, INK, plain
+from weekly_kpi_report_agent.report import INK, INK2, plain
 
 START = date(2011, 11, 28)
 FENCE = re.compile(r"<(/?)(week-data-[0-9a-f]{16})>")
@@ -76,12 +76,12 @@ def test_boundary_uses_unrounded_values_not_displays(
     sale = ("1", "10001", "AAA", 10, datetime(2011, 11, 29, 10), 100.0, 1.0, UK)
     below, _, _, _ = run(tmp_path / "a", monkeypatch, [sale, cancel(249.9), FILLER])
     assert fig(below, "F43").display == "£250"
-    assert fig(below, "F3").display == "£1,000"
+    assert fig(below, "F3").display == "£1\u202f000"
     assert below.reasons == []
     assert below.status == "ok"
     above, _, _, _ = run(tmp_path / "b", monkeypatch, [sale, cancel(250.4), FILLER])
     assert above.reasons == [
-        "large cancellations: £250 cancelled against £1,000 revenue"
+        "large cancellations: £250 cancelled against £1\u202f000 revenue"
     ]
 
 
@@ -346,7 +346,7 @@ def test_partial_week_mutes_change_lines_full_week_does_not(
     _, folder, _, _ = run(tmp_path / "a", monkeypatch, [prev, cur])
     partial = (folder / "report.html").read_text()
     assert (
-        len(re.findall(rf'font-size:12px;color:{FAINT};">[^<]*vs last week', partial))
+        len(re.findall(rf'font-size:12px;color:{INK2};">[^<]*vs last week', partial))
         == 4
     )
     assert f'color:{INK};">▲' not in partial

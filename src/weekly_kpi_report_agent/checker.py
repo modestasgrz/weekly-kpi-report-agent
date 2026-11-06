@@ -5,7 +5,7 @@ from decimal import Decimal
 from weekly_kpi_report_agent.models import Figure, Violation
 
 TOKEN = re.compile(
-    r"[0-9]{4}-[0-9]{2}-[0-9]{2}|[+\-−]?£?(?:[0-9]{1,3}(?:,[0-9]{3})+|[0-9]+)(?:\.[0-9]+)?%?"
+    r"[0-9]{4}-[0-9]{2}-[0-9]{2}|[+\-−]?£?(?:[0-9]{1,3}(?:[,\u202f][0-9]{3})+|[0-9]+)(?:\.[0-9]+)?%?"
 )
 MARKER = re.compile(r" ?\[F(\d+)\]")
 ANY_MARKER = re.compile(r"\[F(\d+)\]")

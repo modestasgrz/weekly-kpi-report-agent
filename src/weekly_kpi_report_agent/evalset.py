@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 from pydantic import BaseModel
 
-from weekly_kpi_report_agent.checker import check_narrative
+from weekly_kpi_report_agent.checker import TOKEN, check_narrative
 from weekly_kpi_report_agent.kpis import compute_week
 from weekly_kpi_report_agent.models import Figure
 
@@ -81,7 +81,7 @@ def plant(
     """One planted error of `kind` in `text`, or None when the text has nothing to plant it on."""
     refs = [
         (m.group(1), m.group(2))
-        for m in re.finditer(r"(\S+) \[(F\d+)\]", text)
+        for m in re.finditer(rf"({TOKEN.pattern}) \[(F\d+)\]", text)
         if f[m.group(2)].key not in ("week_start", "week_end")
     ]
     if kind == "invented":

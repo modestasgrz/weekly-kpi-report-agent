@@ -37,12 +37,17 @@ def rounded(value: float, places: str) -> Decimal:
     )
 
 
+def grouped(value: float | Decimal) -> str:
+    """Thousands separated by a narrow no-break space (DEC-06), never a comma."""
+    return f"{value:,}".replace(",", "\u202f")
+
+
 def money(value: float) -> str:
-    return f"£{rounded(value, '1') + 0:,}"
+    return f"£{grouped(rounded(value, '1') + 0)}"
 
 
 def count(value: float) -> str:
-    return f"{int(value):,}"
+    return grouped(int(value))
 
 
 def change(value: float) -> str:
@@ -133,7 +138,7 @@ def compute_week(
             )
         )
 
-    lines = f"{cur.lines:,} product lines, {rng}, {file_name}"
+    lines = f"{grouped(cur.lines)} product lines, {rng}, {file_name}"
     add(
         "week_start",
         "Week start (Monday)",
@@ -167,7 +172,7 @@ def compute_week(
         "aov",
         "Average order value (GBP)",
         week_aov,
-        f"£{rounded(week_aov or 0, '0.01'):,}",
+        f"£{grouped(rounded(week_aov or 0, '0.01'))}",
         f"revenue / orders over {lines}",
     )
     add(
@@ -252,7 +257,7 @@ def compute_week(
                 f"{kpi} change, {kind}",
                 delta,
                 change(delta or 0),
-                f"({kpi} this week − {kpi} of the {described}) / base × 100; base {'n/a' if base is None else f'{round(base, 2):,}'}, {file_name}",
+                f"({kpi} this week − {kpi} of the {described}) / base × 100; base {'n/a' if base is None else grouped(round(base, 2))}, {file_name}",
             )
             if (
                 delta is not None
@@ -272,7 +277,7 @@ def compute_week(
                     label,
                     revenue,
                     money(revenue),
-                    f"sum(Quantity×Price) of {label} over {n:,} product lines, {rng}, {file_name}",
+                    f"sum(Quantity×Price) of {label} over {grouped(n)} product lines, {rng}, {file_name}",
                 )
             else:
                 add(f"{prefix}_{i + 1}_revenue", "", None, "", "")
@@ -310,7 +315,7 @@ def compute_week(
         "Cancelled product value (GBP)",
         cancelled_value,
         money(cancelled_value),
-        f"−sum(Quantity×Price) over {len(cancelled):,} product cancellation lines, {rng}, {file_name}",
+        f"−sum(Quantity×Price) over {grouped(len(cancelled))} product cancellation lines, {rng}, {file_name}",
     )
     net = cur.revenue - cancelled_value
     add(

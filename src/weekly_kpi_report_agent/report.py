@@ -15,14 +15,18 @@ KEY_NUMBERS = [
 ]
 ANOMALY_WORDS = {"wow": "vs last week", "vs4w": "vs 4-wk avg"}
 
-INK = "#22201c"
-MUTED = "#77716a"
-FAINT = "#9a948c"
-RULE = "#e6e0d6"
-ACCENT = "#2e5e4e"
-SERIF = "Georgia, 'Iowan Old Style', 'Times New Roman', serif"
-SANS = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif"
-SECTION = f"margin:28px 0 10px;font-family:{SERIF};font-size:18px;font-weight:normal;color:{ACCENT};"
+INK = "#EDE6D8"
+INK2 = "#dccfba"
+MUTED = "#8a857b"
+AMBER = "#E8A83C"
+AMBER2 = "#B0791C"
+CARD = "#0e1b13"
+SURFACE = "#1b241e"
+BANNER = "#2a2416"
+RULE = "#2a352d"
+SANS = "'Avenir Next', Avenir, 'Helvetica Neue', Arial, sans-serif"
+MONO = "ui-monospace, 'SF Mono', Menlo, monospace"
+SECTION = f"margin:28px 0 10px;font-family:{SANS};font-size:13px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:{AMBER};"
 SMALL = f"font-size:12px;line-height:1.5;color:{MUTED};"
 
 
@@ -37,7 +41,7 @@ def plain(reason: str) -> str:
     if m := re.fullmatch(r"partial week: data ends (\d{4}-\d{2}-\d{2})", reason):
         day = date.fromisoformat(m[1]).strftime("%A")
         return f"Data stops on {day} {m[1]}, so this week is missing days. Don't compare it with full weeks."
-    if m := re.fullmatch(r"large cancellations: (\S+) cancelled against .*", reason):
+    if m := re.fullmatch(r"large cancellations: (.+?) cancelled against .*", reason):
         return f"{m[1]} of products were cancelled this week. Revenue counts orders before cancellations, so the week's takings may be lower."
     if reason.startswith("narrative failed number check"):
         return f"The written summary failed the number check, so it is held back. {computed}"
@@ -110,7 +114,9 @@ def render(
 
     def text(value: str) -> str:
         return MARKERS.sub(
-            lambda m: f'<sup style="font-size:10px;color:{FAINT};">{m[1]}</sup>',
+            lambda m: (
+                f'<sup style="font-size:10px;font-family:{MONO};color:{MUTED};">{m[1]}</sup>'
+            ),
             html.escape(value).replace(" [F", "[F"),
         )
 
@@ -121,8 +127,8 @@ def render(
     if reasons:
         md += ["> **Needs review**", ">", *(f"> - {r}" for r in reasons), ""]
         page.append(
-            '<div style="margin:14px 0 18px;padding:14px 16px;background:#fbf1dc;border-left:4px solid #b7791f;border-radius:4px;">'
-            '<p style="margin:0 0 6px;font-weight:600;color:#7a4e0e;">Needs review</p>'
+            f'<div style="margin:14px 0 18px;padding:14px 16px;background-color:{BANNER};border-left:4px solid {AMBER2};border-radius:8px;">'
+            f'<p style="margin:0 0 6px;font-weight:600;color:{AMBER};">Needs review</p>'
             + "".join(
                 f'<p style="margin:4px 0 0;font-size:14px;line-height:1.5;color:{INK};">{html.escape(r)}</p>'
                 for r in reasons
@@ -133,12 +139,12 @@ def render(
         line = f"No sales data for week {week.week_start} ({week.week_start}..{end}): no product lines in the dataset for these dates."
         md += [line, ""]
         page.append(
-            f'<p style="margin:16px 0;font-size:16px;line-height:1.6;">{html.escape(line)}</p>'
+            f'<p style="margin:16px 0;font-size:16px;line-height:1.6;color:{INK};">{html.escape(line)}</p>'
         )
     else:
         md += [f"## {headline}", ""]
         page.append(
-            f'<h1 style="margin:6px 0 20px;font-family:{SERIF};font-size:26px;line-height:1.25;font-weight:normal;color:{INK};">{text(headline)}</h1>'
+            f'<h1 style="margin:6px 0 20px;font-family:{SANS};font-size:26px;line-height:1.25;font-weight:600;color:{INK};">{text(headline)}</h1>'
         )
         tiles = []
         for label, key in KEY_NUMBERS:
@@ -148,11 +154,11 @@ def render(
                 f"- {label}: {value.display} ({change_words(wow)}; vs 4-wk avg {vs4w} · vs last year {yoy})"
             )
             tiles.append(
-                f'<div style="display:inline-block;vertical-align:top;width:120px;margin:0 8px 10px 0;padding:12px;border:1px solid {RULE};border-radius:6px;">'
-                f'<div style="font-size:12px;color:{MUTED};">{label}</div>'
-                f'<div style="margin:2px 0 4px;font-family:{SERIF};font-size:22px;color:{INK};">{html.escape(value.display)}</div>'
-                f'<div style="font-size:12px;color:{FAINT if partial else INK};">{"" if wow.value is None or wow.display in ("+0.0%", "-0.0%") else "▲ " if wow.value > 0 else "▼ "}{html.escape(change_words(wow))}</div>'
-                f'<div style="margin-top:2px;font-size:11px;color:{FAINT};">vs 4-wk avg {html.escape(vs4w)} · vs last year {html.escape(yoy)}</div>'
+                f'<div style="display:inline-block;vertical-align:top;width:120px;margin:0 8px 10px 0;padding:12px;background-color:{SURFACE};border:1px solid {RULE};border-radius:12px;">'
+                f'<div style="font-size:12px;color:{INK2};">{label}</div>'
+                f'<div style="margin:2px 0 4px;font-size:22px;font-weight:600;color:{INK};">{html.escape(value.display)}</div>'
+                f'<div style="font-size:12px;color:{INK2 if partial else INK};">{"" if wow.value is None or wow.display in ("+0.0%", "-0.0%") else "▲ " if wow.value > 0 else "▼ "}{html.escape(change_words(wow))}</div>'
+                f'<div style="margin-top:2px;font-size:11px;color:{INK2};">vs 4-wk avg {html.escape(vs4w)} · vs last year {html.escape(yoy)}</div>'
                 "</div>"
             )
         md += [*(f"- {x}" for x in others), ""]
@@ -221,7 +227,7 @@ def render(
                 f'<details><summary style="{SECTION}cursor:pointer;">Sources</summary>'
             )
             page += [
-                f'<p style="{SMALL}margin:0 0 4px;"><span style="color:{FAINT};">{i}</span> {html.escape(figures[i].label)}: {html.escape(figures[i].display)} — {html.escape(figures[i].source)}</p>'
+                f'<p style="{SMALL}margin:0 0 4px;"><span style="font-family:{MONO};">{i}</span> {html.escape(figures[i].label)}: {html.escape(figures[i].display)} — {html.escape(figures[i].source)}</p>'
                 for i in used
             ]
             page.append("</details>")
@@ -236,12 +242,12 @@ def render(
             ),
             "",
         ]
-        cell = f"padding:4px 6px 4px 0;border-top:1px solid {RULE};vertical-align:top;font-size:11px;line-height:1.4;color:{MUTED};"
+        cell = f"padding:4px 6px 4px 0;border-top:1px solid {RULE};vertical-align:top;font-size:11px;line-height:1.4;color:{INK2};"
         page += [
             f'<details><summary style="{SECTION}cursor:pointer;">All figures ({len(shown)})</summary>',
             '<table role="presentation" width="100%" cellpadding="0" cellspacing="0">',
             *(
-                f'<tr><td style="{cell}color:{FAINT};">{f.id}</td><td style="{cell}">{html.escape(f.label)}</td>'
+                f'<tr><td style="{cell}font-family:{MONO};color:{MUTED};">{f.id}</td><td style="{cell}">{html.escape(f.label)}</td>'
                 f'<td style="{cell}white-space:nowrap;">{html.escape(f.display)}</td><td style="{cell}">{html.escape(f.source)}</td></tr>'
                 for f in shown
             ),
@@ -258,9 +264,9 @@ def render(
             "<!DOCTYPE html>\n"
             '<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">'
             f"<title>{html.escape(subject(week))}</title></head>\n"
-            f'<body style="margin:0;padding:0;background:#f6f3ee;font-family:{SANS};color:{INK};">\n'
-            '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f6f3ee;"><tr><td align="center" style="padding:20px 10px;">\n'
-            f'<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:680px;background:#fffdf9;border:1px solid {RULE};border-radius:8px;"><tr><td align="left" style="padding:26px 22px;font-family:{SANS};color:{INK};">\n'
+            f'<body bgcolor="{CARD}" style="margin:0;padding:0;background-color:{CARD};font-family:{SANS};color:{INK};">\n'
+            f'<table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="{CARD}" style="background-color:{CARD};"><tr><td align="center" bgcolor="{CARD}" style="padding:20px 10px;background-color:{CARD};background-image:linear-gradient(160deg,#141414 0%,#0B1710 100%);">\n'
+            f'<table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="{CARD}" style="max-width:680px;background-color:{CARD};border:1px solid {RULE};border-radius:12px;"><tr><td align="left" bgcolor="{CARD}" style="padding:26px 22px;background-color:{CARD};font-family:{SANS};color:{INK};">\n'
             f"{body}\n"
             "</td></tr></table>\n</td></tr></table>\n</body></html>\n"
         ),
