@@ -89,7 +89,7 @@ def ranked(products: pd.DataFrame, by: str) -> list[tuple[str, float, int]]:
 def compute_week(
     df: pd.DataFrame, start: date, file_name: str
 ) -> tuple[list[Figure], list[str]]:
-    """The 43 figures of DEC-05 for the ISO week starting `start`, plus the anomaly keys of DEC-04."""
+    """The 44 figures of DEC-05 for the ISO week starting `start`, plus the anomaly keys of DEC-04."""
     end = start + timedelta(days=6)
     rng = f"{start}..{end}"
     week = window(df, start)
@@ -311,5 +311,12 @@ def compute_week(
         cancelled_value,
         money(cancelled_value),
         f"−sum(Quantity×Price) over {len(cancelled):,} product cancellation lines, {rng}, {file_name}",
+    )
+    add(
+        "net_revenue",
+        "Revenue after product cancellations (GBP)",
+        cur.revenue - cancelled_value,
+        money(cur.revenue - cancelled_value),
+        f"product revenue (F3) − cancelled product value (F43), {rng}, {file_name}",
     )
     return figures, anomalies

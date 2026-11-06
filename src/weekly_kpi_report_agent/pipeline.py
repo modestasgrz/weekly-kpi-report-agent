@@ -23,7 +23,9 @@ Rules:
 3. Put product and country names in double quotes, exactly as given.
 4. When you describe a change figure, use "rose", "up" or "increased" for a figure starting with "+" and "fell", "down" or "decreased" for one starting with "-". Write "flat" for "+0.0%" or "-0.0%".
 5. Mention every anomaly listed. Keep it to 2 or 3 short paragraphs of plain text, no markdown, and a headline under 120 characters.
-6. If a previous attempt was rejected, fix exactly the listed problems.
+6. Write for a busy shop owner in plain words: never use "anomaly", "anomalies" or "flagged"; call a big move unusual.
+7. If the Notes list large cancellations or a partial week, the headline says so and does not present revenue growth as good news.
+8. If a previous attempt was rejected, fix exactly the listed problems.
 Reply with JSON: {"headline": "...", "paragraphs": ["...", "..."]}."""
 
 

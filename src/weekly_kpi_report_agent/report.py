@@ -99,10 +99,19 @@ def render(
         else "Narrative withheld: no narrative was produced."
     ) + " The figures are computed in code and can be used as they are."
     headline = narrative.headline if narrative else WITHHELD_HEADLINE
-    others = (
-        f"Cancellation rate {by_key['cancellation_rate'].display} · "
-        f"Cancelled products {by_key['cancelled_value'].display}"
-    )
+    others = [
+        (
+            f"Cancellation rate {by_key['cancellation_rate'].display} · "
+            f"Cancelled products {by_key['cancelled_value'].display} · "
+            f"Revenue after cancellations {by_key['net_revenue'].display}"
+        )
+    ]
+    if by_key["lines_without_customer_id"].value:
+        others.append(
+            f"No customer ID on {by_key['lines_without_customer_id'].display} of "
+            f"{by_key['product_lines'].display} product lines; Customers counts only lines with one."
+        )
+    partial = any(r.startswith("partial week: ") for r in week.reasons)
 
     def text(value: str) -> str:
         return MARKERS.sub(
@@ -141,20 +150,24 @@ def render(
             value, wow = by_key[key], by_key[f"{key}_wow"]
             vs4w, yoy = by_key[f"{key}_vs4w"].display, by_key[f"{key}_yoy"].display
             md.append(
-                f"- {label}: {value.display} ({change_words(wow)}; 4-wk avg {vs4w} · last year {yoy})"
+                f"- {label}: {value.display} ({change_words(wow)}; vs 4-wk avg {vs4w} · vs last year {yoy})"
             )
             tiles.append(
                 f'<div style="display:inline-block;vertical-align:top;width:120px;margin:0 8px 10px 0;padding:12px;border:1px solid {RULE};border-radius:6px;">'
                 f'<div style="font-size:12px;color:{MUTED};">{label}</div>'
                 f'<div style="margin:2px 0 4px;font-family:{SERIF};font-size:22px;color:{INK};">{html.escape(value.display)}</div>'
-                f'<div style="font-size:12px;color:{INK};">{arrow(wow)}{html.escape(change_words(wow))}</div>'
-                f'<div style="margin-top:2px;font-size:11px;color:{FAINT};">4-wk avg {html.escape(vs4w)} · last year {html.escape(yoy)}</div>'
+                f'<div style="font-size:12px;color:{FAINT if partial else INK};">{arrow(wow)}{html.escape(change_words(wow))}</div>'
+                f'<div style="margin-top:2px;font-size:11px;color:{FAINT};">vs 4-wk avg {html.escape(vs4w)} · vs last year {html.escape(yoy)}</div>'
                 "</div>"
             )
-        md += [f"- {others}", ""]
+        md += [*(f"- {x}" for x in others), ""]
         page += [
             f"<div>{''.join(tiles)}</div>",
-            f'<p style="margin:2px 0 22px;font-size:13px;color:{MUTED};">{html.escape(others)}</p>',
+            *(
+                f'<p style="margin:2px 0 6px;font-size:13px;color:{MUTED};">{html.escape(x)}</p>'
+                for x in others
+            ),
+            '<div style="height:16px;"></div>',
         ]
         para = f"margin:0 0 14px;font-size:16px;line-height:1.6;color:{INK};"
         if narrative:
