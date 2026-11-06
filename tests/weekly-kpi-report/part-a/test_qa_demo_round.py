@@ -511,3 +511,9 @@ def test_f44_never_negative_zero() -> None:
     ]
     figures, _ = compute_week(cleaned(rows), START, "f.xlsx")
     assert "-0" not in figures[43].display
+
+
+def test_money_never_shows_negative_zero() -> None:
+    from weekly_kpi_report_agent.kpis import money
+
+    assert [money(-0.3), money(-5e-17), money(-20.0)] == ["£0", "£0", "£-20"]

@@ -38,7 +38,7 @@ def rounded(value: float, places: str) -> Decimal:
 
 
 def money(value: float) -> str:
-    return f"£{rounded(value, '1'):,}"
+    return f"£{rounded(value, '1') + 0:,}"
 
 
 def count(value: float) -> str:
@@ -312,7 +312,7 @@ def compute_week(
         money(cancelled_value),
         f"−sum(Quantity×Price) over {len(cancelled):,} product cancellation lines, {rng}, {file_name}",
     )
-    net = round(cur.revenue - cancelled_value, 6) + 0.0
+    net = cur.revenue - cancelled_value
     add(
         "net_revenue",
         "Revenue after product cancellations (GBP)",
