@@ -124,7 +124,7 @@ def run_week(
             checks_failed += 1
             rejected = list(dict.fromkeys(v.sentence for v in week.violations))
             feedback = [
-                f"- {v.kind}: {v.token!r} in the sentence {v.sentence!r}"
+                f"- {v.kind}: '{v.token}' in the sentence '{v.sentence}'"
                 for v in week.violations
             ]
         if narrative is None and checks_failed:
@@ -174,6 +174,7 @@ def publish(
                 os.environ.get("KPI_REPORT_TO", gmail.DEFAULT_TO), subject(week), page
             )
         except gmail.DRAFT_ERRORS as e:
+            week.draft_id = None
             week.reasons.append(f"gmail draft failed: {type(e).__name__}")
             week.status = "needs_review"
         write()

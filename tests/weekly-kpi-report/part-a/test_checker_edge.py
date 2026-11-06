@@ -13,10 +13,10 @@ def fig(fid: str, display: str, value: float | None = 1.0, label: str = "") -> F
 FIGURES = [
     fig("F1", "2011-11-28", 20111128),
     fig("F2", "2011-12-04", 20111204),
-    fig("F3", "£1,234,567", 1234567),
+    fig("F3", "£1\u202f234\u202f567", 1234567),
     fig("F4", "12"),
     fig("F5", "£47.52", 47.52),
-    fig("F6", "1,000", 1000),
+    fig("F6", "1\u202f000", 1000),
     fig("F10", "25.0%", 25.0),
     fig("F11", "+39.8%", 39.8),
     fig("F12", "+0.0%", 0.0),
@@ -38,11 +38,11 @@ def kinds(text: str, figures: list[Figure] | None = None) -> list[tuple[str, str
 @pytest.mark.parametrize(
     "text",
     [
-        "Revenue reached £1,234,567 [F3].",
-        "Revenue reached £1,234,567[F3].",
+        "Revenue reached £1\u202f234\u202f567 [F3].",
+        "Revenue reached £1\u202f234\u202f567[F3].",
         "The average order was £47.52 [F5].",
         "Conversion was 25.0% [F10].",
-        "Units were 1,000 [F6].",
+        "Units were 1\u202f000 [F6].",
     ],
 )
 def test_exact_display_with_own_marker_passes(text: str) -> None:
@@ -53,8 +53,8 @@ def test_exact_display_with_own_marker_passes(text: str) -> None:
     ("text", "token"),
     [
         ("Revenue reached £1234567 [F3].", "£1234567"),
-        ("Revenue reached £1,234,568 [F3].", "£1,234,568"),
-        ("Revenue reached 1,234,567 [F3].", "1,234,567"),
+        ("Revenue reached £1\u202f234\u202f568 [F3].", "£1\u202f234\u202f568"),
+        ("Revenue reached 1\u202f234\u202f567 [F3].", "1\u202f234\u202f567"),
         ("Order value was £47.5 [F5].", "£47.5"),
         ("Order value was £47.520 [F5].", "£47.520"),
         ("Rate was 25% [F10].", "25%"),
@@ -78,8 +78,8 @@ def test_unicode_minus_is_normalised_in_reported_token() -> None:
 def test_number_glued_to_text_is_not_followed_by_a_marker() -> None:
     assert kinds("We shipped 12x [F4].") == [("missing_reference", "12")]
     assert kinds("We shipped 12x.") == [("missing_reference", "12")]
-    assert kinds("Sales were £1,234,567k [F3].") == [
-        ("missing_reference", "£1,234,567")
+    assert kinds("Sales were £1\u202f234\u202f567k [F3].") == [
+        ("missing_reference", "£1\u202f234\u202f567")
     ]
 
 
@@ -105,11 +105,11 @@ def test_extra_markers_to_existing_figures_pass_but_orphan_unknown_marker_is_fla
 
 
 def test_two_numbers_sharing_one_marker() -> None:
-    assert kinds("Orders and revenue were 12 and £1,234,567 [F3].") == [
+    assert kinds("Orders and revenue were 12 and £1\u202f234\u202f567 [F3].") == [
         ("missing_reference", "12")
     ]
-    assert kinds("Revenue £1,234,567 and orders 12 [F4].") == [
-        ("missing_reference", "£1,234,567")
+    assert kinds("Revenue £1\u202f234\u202f567 and orders 12 [F4].") == [
+        ("missing_reference", "£1\u202f234\u202f567")
     ]
 
 
@@ -200,7 +200,7 @@ def test_direction_word_resets_after_each_marker() -> None:
     assert kinds("Orders rose to 12 [F4] while aov rose -6.8% [F17].") == [
         ("wrong_direction", "-6.8%")
     ]
-    assert kinds("Revenue fell to £1,234,567 [F3], then +39.8% [F11].") == []
+    assert kinds("Revenue fell to £1\u202f234\u202f567 [F3], then +39.8% [F11].") == []
 
 
 def test_direction_word_after_the_figure_is_ignored() -> None:
@@ -235,7 +235,7 @@ def test_direction_words_outside_the_closed_list_are_not_checked() -> None:
 def test_direction_check_only_applies_to_change_figures() -> None:
     assert kinds("Orders fell to 12 [F4].") == []
     assert kinds("Rate fell 25.0% [F10].") == []
-    assert kinds("Revenue fell to £1,234,567 [F3].") == []
+    assert kinds("Revenue fell to £1\u202f234\u202f567 [F3].") == []
 
 
 def test_zero_change_passes_with_any_direction() -> None:

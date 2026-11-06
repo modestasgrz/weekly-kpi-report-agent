@@ -99,9 +99,11 @@ Real runs on 2026-11-06 with `claude-sonnet-5-5`, local output only. The data is
 - The checker checks numbers and direction words only: not wording outside the closed list ("best week ever", "slightly", "surged"), wrong product or country names, claims without numbers, or spelled-out numbers ("five").
 - Revenue is gross: cancellations are shown next to it (cancelled value, revenue after cancellations) and flagged at 25% of revenue or more, not netted out, and a cancellation is not matched to the week of its original order.
 - Wholesale and retail customers are mixed, so the average order value blends both. No margin, stock or returns data exists in this dataset.
-- Many product lines have no customer ID (2,517 of 13,181 in week 2011-09-19, 6,183 of 17,225 in week 2011-12-05); the report says so, and "Customers" counts only lines with one.
+- Many product lines have no customer ID (2 517 of 13 181 in week 2011-09-19, 6 183 of 17 225 in week 2011-12-05); the report says so, and "Customers" counts only lines with one.
 - "Sources" and "All figures" use `<details>`, which folds them away in a browser; email-client support varies and a real Gmail draft has not been checked yet.
 - Failure handling seen for real: when the API account ran out of credit mid-run, every affected week was still written with figures only and flagged `needs_review` ("model call failed: BadRequestError").
+- Mail clients turn the two licence URLs in the footer into links in their own blue, which is low-contrast on the dark page; the footer text must stay exact (attribution), so it isn't restyled.
+- The narrative prompt now asks the model to copy the U+202F separator exactly; this was not re-run against the live model after the format change (no credits), so first-attempt pass rates under the new format are unmeasured.
 - The schedule files are examples; nothing is installed, and a human presses send on every draft.
 
 ## Development

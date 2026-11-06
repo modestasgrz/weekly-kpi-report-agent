@@ -206,8 +206,8 @@ def render(
                 f'<h2 style="{SECTION}">{title}</h2>'
                 '<table role="presentation" width="100%" cellpadding="0" cellspacing="0">'
                 + "".join(
-                    f'<tr><td style="padding:5px 8px 5px 0;border-bottom:1px solid {RULE};font-size:14px;color:{INK};">{html.escape(f.label)}</td>'
-                    f'<td align="right" style="padding:5px 0;border-bottom:1px solid {RULE};font-size:14px;color:{INK};white-space:nowrap;">{html.escape(f.display)}</td></tr>'
+                    f'<tr><td bgcolor="{CARD}" style="padding:5px 8px 5px 0;border-bottom:1px solid {RULE};font-size:14px;color:{INK};">{html.escape(f.label)}</td>'
+                    f'<td align="right" bgcolor="{CARD}" style="padding:5px 0;border-bottom:1px solid {RULE};font-size:14px;color:{INK};white-space:nowrap;">{html.escape(f.display)}</td></tr>'
                     for f in rows
                 )
                 + "</table></div>"
@@ -247,15 +247,17 @@ def render(
             f'<details><summary style="{SECTION}cursor:pointer;">All figures ({len(shown)})</summary>',
             '<table role="presentation" width="100%" cellpadding="0" cellspacing="0">',
             *(
-                f'<tr><td style="{cell}font-family:{MONO};color:{MUTED};">{f.id}</td><td style="{cell}">{html.escape(f.label)}</td>'
-                f'<td style="{cell}white-space:nowrap;">{html.escape(f.display)}</td><td style="{cell}">{html.escape(f.source)}</td></tr>'
+                f'<tr><td bgcolor="{CARD}" style="{cell}font-family:{MONO};color:{MUTED};">{f.id}</td><td bgcolor="{CARD}" style="{cell}">{html.escape(f.label)}</td>'
+                f'<td bgcolor="{CARD}" style="{cell}white-space:nowrap;">{html.escape(f.display)}</td><td bgcolor="{CARD}" style="{cell}">{html.escape(f.source)}</td></tr>'
                 for f in shown
             ),
             "</table></details>",
         ]
     md += ["---", "", ATTRIBUTION, ""]
     page.append(
-        f'<p style="{SMALL}margin:28px 0 0;padding-top:12px;border-top:1px solid {RULE};">{html.escape(ATTRIBUTION)}</p>'
+        f'<p style="{SMALL}margin:28px 0 0;padding-top:12px;border-top:1px solid {RULE};">'
+        + html.escape(ATTRIBUTION)
+        + "</p>"
     )
     body = "\n".join(page).replace("[", "&#91;")
     return (
