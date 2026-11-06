@@ -28,7 +28,9 @@ xlsx ──► clean (dedupe, cancellations, adjustments, non-product codes, pri
   - partial week (data stops before Sunday)
   - per-run cost cap (`KPI_COST_CAP_USD`, default $5)
   - Gmail draft fails (the local report is still written)
-- **Untrusted text**: product descriptions come from the data. They reach the model only inside one `<user_input>` block, cut to 100 characters, with `<` and `>` escaped. The system prompt is a constant. Model output is parsed by a Pydantic schema and then checked.
+  - large cancellations: cancelled product value ≥ 25% of revenue (revenue counts orders before cancellations, so a big order cancelled the same week would otherwise look like a sales jump)
+- **The report** (`report.html`, also the Gmail draft body): email-safe HTML, inline styles only, no images or external resources. A "Needs review" banner in plain words when something is off, then the headline, four key numbers with the change vs last week, the narrative with small source markers, "Worth a look", top products and countries, and the sources and all figures folded away at the bottom.
+- **Untrusted text**: product descriptions come from the data. They reach the model only inside one `<week-data-…>` block whose tag ends in 16 random hex characters, new on every message (so a description can't forge the closing tag), cut to 100 characters, with `<` and `>` escaped. The system prompt is a constant. Model output is parsed by a Pydantic schema and then checked.
 
 ## Measured
 
@@ -36,18 +38,25 @@ xlsx ──► clean (dedupe, cancellations, adjustments, non-product codes, pri
 
 The planted errors are synthetic and the checker is exact matching by design, so this number shows the checker does what it claims on those six error kinds. It says nothing about how often the LLM writes a clean narrative on its first try; the backfill summary (`backfill_summary.csv`, column `attempts`) records that.
 
-What the checker does **not** check: wording outside the closed direction-word list ("best week ever", "slightly", "surged"), wrong product or country names, claims without numbers, and spelled-out numbers ("five").
-
-## Run it
+## Run it yourself
 
 ```bash
 uv sync
+export ANTHROPIC_API_KEY=...                            # never committed
+tools/demo.sh                                           # downloads the data if needed, runs the 2 demo weeks locally, opens both reports
+```
+
+`tools/demo.sh` runs week 2011-09-19 (a normal week, status `ok`) and week 2011-12-05 (flagged "Needs review"), writes `out/demo/<week>/report.html|md|figures.json` and never touches Gmail. About $0.03 per run.
+
+Every command:
+
+```bash
 uv run weekly-kpi-report download                       # data/raw/online_retail_II.xlsx, SHA-256 checked
 uv run weekly-kpi-report eval-checker --data data/raw/online_retail_II.xlsx --from 2010-12-06 --to 2011-11-28 --out out/eval
-export ANTHROPIC_API_KEY=...                            # never committed
 uv run weekly-kpi-report backfill --data data/raw/online_retail_II.xlsx --from 2010-12-06 --to 2011-12-05 --out out/backfill
-uv run weekly-kpi-report auth                           # Gmail OAuth, scope gmail.compose only
-uv run weekly-kpi-report run --data data/raw/online_retail_II.xlsx --as-of 2011-09-26   # draft for week 2011-09-19
+uv run weekly-kpi-report run --data data/raw/online_retail_II.xlsx --as-of 2011-09-26 --no-gmail   # local report for week 2011-09-19
+uv run weekly-kpi-report auth                           # one-time Gmail OAuth, scope gmail.compose only
+uv run weekly-kpi-report run --data data/raw/online_retail_II.xlsx --as-of 2011-09-26              # + Gmail draft
 ```
 
 `run --no-gmail` writes only the local `out/<week>/report.md|html|figures.json`. Backfill never touches Gmail.
@@ -61,6 +70,29 @@ uv run weekly-kpi-report run --data data/raw/online_retail_II.xlsx --as-of 2011-
 | `KPI_GMAIL_TOKEN_FILE` | `~/.config/portfolio-demos/token-weekly-kpi-report.json` |
 
 Schedule examples, which the code doesn't install: `deploy/com.portfolio.weekly-kpi-report.plist` (launchd, Mondays 07:00) and `deploy/crontab.example`.
+
+## Results
+
+Real runs on 2026-11-06 with `claude-sonnet-5-5`, local output only. The data is the public UCI Online Retail II set, a UK online giftware retailer in 2009–2011, so every date is in 2011; nothing here is live shop data.
+
+| Week | Status | What the report says |
+| --- | --- | --- |
+| 2011-09-19 | `ok`, 1 attempt | Revenue £328,713, +46.8% vs last week, orders 463 (+28.6%); "Worth a look" lists the four unusual moves |
+| 2011-12-05 | `needs_review`, 1–2 attempts | Banner: data stops on Friday 2011-12-09 (partial week), and £172,782 of products were cancelled against £483,725 revenue. The week's top "sale", PAPER CRAFT, LITTLE BIRDIE at £168,470, was one order cancelled 12 minutes later; the headline says so instead of celebrating a +56.4% jump |
+
+- **Number check on real narratives:** 23 narratives (15 backfill weeks 2010-12-06..2011-03-21 plus 8 runs of the two demo weeks): 22 passed on the first attempt, 1 needed one retry and then passed, none was withheld. Cost about $0.014 per week.
+- **Large-cancellation flag:** on the full dataset it fires on 2 of 104 weeks (2011-01-17 and 2011-12-05), both real giant orders cancelled the same week.
+- **Failure path seen for real:** the backfill ran out of API credit at week 2011-03-28. Every later week was still written, flagged `needs_review` with "model call failed: BadRequestError" and figures only, and the run finished with exit 0.
+- **Checker eval:** precision 1.000, recall 1.000 on 120 planted cases (see Measured).
+
+## Known limits
+
+- The checker checks numbers and direction words only: not wording outside the closed list ("best week ever", "slightly", "surged"), wrong product or country names, claims without numbers, or spelled-out numbers ("five").
+- Revenue is gross: cancellations are shown next to it (cancelled value, revenue after cancellations) and flagged above 25%, not netted out, and a cancellation is not matched to the week of its original order.
+- Wholesale and retail customers are mixed, so the average order value blends both. No margin, stock or returns data exists in this dataset.
+- Many product lines have no customer ID (2,517 of 13,181 in week 2011-09-19, 6,183 of 17,225 in week 2011-12-05); the report says so, and "Customers" counts only lines with one.
+- "Sources" and "All figures" fold away in browsers and Apple Mail; Gmail shows them open at the bottom.
+- The schedule files are examples; nothing is installed, and a human presses send on every draft.
 
 ## Development
 
