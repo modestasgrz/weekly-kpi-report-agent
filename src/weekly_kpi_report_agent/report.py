@@ -329,7 +329,7 @@ def render(
         md += [*(f"- {x}" for x in others), ""]
         page += [
             (
-                f'<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:6px 0 0;">'
+                f'<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:16px 0 0;">'
                 f"<tr>{tiles[0]}{tiles[1]}</tr><tr>{tiles[2]}{tiles[3]}</tr></table>"
             ),
             *(
