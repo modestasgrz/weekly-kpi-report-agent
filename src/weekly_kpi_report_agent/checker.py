@@ -14,7 +14,7 @@ SENTENCE_END = re.compile(r"(?<=[.!?])\s+")
 UP = {"rose", "up", "increased", "grew", "higher"}
 DOWN = {"fell", "down", "decreased", "dropped", "lower"}
 WORD = re.compile(r"[A-Za-z]+")
-CHANGE_IDS = {f"F{i}" for i in range(11, 26)}
+CHANGE_IDS = {f"F{i}" for i in range(11, 26)} | {"F50"}
 
 
 def check_narrative(text: str, figures: list[Figure]) -> list[Violation]:

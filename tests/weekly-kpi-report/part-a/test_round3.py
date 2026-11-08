@@ -55,7 +55,7 @@ def saved_week(tmp_path: Path) -> Path:
         status="ok",
         reasons=[],
         attempts=1,
-        figures=[],
+        figures=[fig("F52", "top_cancel_share", "n/a", 0.0)],
         anomalies=[],
         violations=[],
         draft_id=None,

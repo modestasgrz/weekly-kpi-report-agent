@@ -5,10 +5,13 @@ import pandas as pd
 from pydantic import BaseModel
 
 from weekly_kpi_report_agent.data import PRODUCT_CODE
-from weekly_kpi_report_agent.models import Figure
+from weekly_kpi_report_agent.models import Cause, Figure
 
 MAX_LABEL = 100
 ANOMALY_PCT = Decimal("25.0")
+LARGE_CANCEL_SHARE = 0.25
+MATCH_DAYS = 14
+HISTORY_KEYS = ["revenue", "orders", "aov", "customers"]
 COMPARED = ["revenue", "orders", "aov", "units", "customers"]
 DQ_BUCKETS = ["duplicate", "cancellation", "adjustment", "non_product", "non_positive"]
 DQ_KEYS = [
@@ -77,24 +80,123 @@ def aov(s: WeekStats) -> float | None:
     return s.revenue / s.orders if s.orders else None
 
 
-def ranked(products: pd.DataFrame, by: str) -> list[tuple[str, float, int]]:
-    """(label, revenue, lines) top 5, revenue desc then label asc."""
-    rows: list[tuple[str, float, int]] = []
+def ranked(products: pd.DataFrame, by: str) -> list[tuple[str, float, int, str]]:
+    """(label, revenue, lines, key) top 5, revenue desc then label asc."""
+    rows: list[tuple[str, float, int, str]] = []
     for key, group in products.groupby(by):
         label = (
             str(key)
             if by == "Country"
             else str(group["Description"].value_counts().sort_index().idxmax())
         )
-        rows.append((label[:MAX_LABEL], float(group["revenue"].sum()), len(group)))
+        rows.append(
+            (label[:MAX_LABEL], float(group["revenue"].sum()), len(group), str(key))
+        )
     rows.sort(key=lambda r: (-round(r[1], 6), r[0]))
     return rows[:5]
+
+
+def week_lines(df: pd.DataFrame, start: date) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """(product lines by revenue desc then time, product-code cancellation lines by value desc then time) of the week."""
+    week = window(df, start)
+    products = week[week["bucket"] == "product"].sort_values(
+        ["revenue", "InvoiceDate"], ascending=[False, True], kind="stable"
+    )
+    cancels = week[
+        (week["bucket"] == "cancellation") & week["StockCode"].str.match(PRODUCT_CODE)
+    ].sort_values(["revenue", "InvoiceDate"], kind="stable")
+    return products, cancels
+
+
+def matching(df: pd.DataFrame, line: pd.Series, cancellations: bool) -> pd.DataFrame:
+    """DEC-22 matches of `line`: its cancellations (cancellations=True) or the orders it cancels, nearest first."""
+    if pd.isna(line["Customer ID"]):
+        return df.iloc[0:0]
+    at = line["InvoiceDate"]
+    span = timedelta(days=MATCH_DAYS)
+    same = df[
+        (df["StockCode"] == line["StockCode"])
+        & (df["Customer ID"] == line["Customer ID"])
+        & (df["Quantity"] == -line["Quantity"])
+    ]
+    if cancellations:
+        found = same[
+            (same["bucket"] == "cancellation")
+            & (same["InvoiceDate"] >= at)
+            & (same["InvoiceDate"] <= at + span)
+        ]
+        nearest: pd.DataFrame = found.sort_values("InvoiceDate", kind="stable")
+        return nearest
+    found = same[
+        (same["bucket"] == "product")
+        & (same["InvoiceDate"] <= at)
+        & (same["InvoiceDate"] >= at - span)
+    ]
+    latest: pd.DataFrame = found.sort_values(
+        "InvoiceDate", ascending=False, kind="stable"
+    )
+    return latest
+
+
+def context(
+    df: pd.DataFrame, start: date, figures: list[Figure], large_cancellations: bool
+) -> tuple[dict[str, list[float]], Cause | None, list[str]]:
+    """DEC-22 history (12 weeks, oldest first), cause and cancelled top products of the week."""
+    weeks = [
+        stats(window(df, start - timedelta(days=7 * i))) for i in range(11, -1, -1)
+    ]
+    history = {
+        "revenue": [s.revenue for s in weeks],
+        "orders": [float(s.orders) for s in weeks],
+        "aov": [aov(s) or 0.0 for s in weeks],
+        "customers": [float(s.customers) for s in weeks],
+    }
+    by_key = {f.key: f for f in figures}
+    products, cancels = week_lines(df, start)
+    cause: Cause | None = None
+    share = by_key["top_line_share"].value
+    if (
+        share is not None
+        and share > 25.0
+        and len(products) >= 2
+        and products["revenue"].iloc[0] >= 10 * products["revenue"].iloc[1]
+    ):
+        top = products.iloc[0]
+        cancelled = matching(df, top, cancellations=True)
+        cause = Cause(
+            product=str(top["Description"])[:MAX_LABEL],
+            invoice=str(top["Invoice"]),
+            cancel_invoice=str(cancelled["Invoice"].iloc[0])
+            if len(cancelled)
+            else None,
+            rule="top_line",
+        )
+    elif large_cancellations and (by_key["top_cancel_share"].value or 0) > 50.0:
+        top = cancels.iloc[0]
+        order = matching(df, top, cancellations=False)
+        cause = Cause(
+            product=str(top["Description"])[:MAX_LABEL],
+            invoice=str(order["Invoice"].iloc[0] if len(order) else top["Invoice"]),
+            cancel_invoice=str(top["Invoice"]),
+            rule="top_cancel",
+        )
+    hit: list[str] = []
+    for i, (_, revenue, _, code) in enumerate(ranked(products, "StockCode"), 26):
+        mine = cancels[cancels["StockCode"] == code]
+        matched = -sum(
+            float(row["revenue"])
+            for _, row in mine.iterrows()
+            if len(matching(df, row, cancellations=False))
+        )
+        if revenue > 0 and matched >= 0.5 * revenue:
+            hit.append(f"F{i}")
+    return history, cause, hit
 
 
 def compute_week(
     df: pd.DataFrame, start: date, file_name: str
 ) -> tuple[list[Figure], list[str]]:
-    """The 44 figures of DEC-05 for the ISO week starting `start`, plus the anomaly keys of DEC-04."""
+    """The 52 figures of DEC-05/DEC-22 for the ISO week starting `start`, plus the anomaly keys of DEC-04."""
     end = start + timedelta(days=6)
     rng = f"{start}..{end}"
     week = window(df, start)
@@ -271,7 +373,7 @@ def compute_week(
         top = ranked(products, by)
         for i in range(5):
             if i < len(top):
-                label, revenue, n = top[i]
+                label, revenue, n, _ = top[i]
                 add(
                     f"{prefix}_{i + 1}_revenue",
                     label,
@@ -324,5 +426,95 @@ def compute_week(
         net,
         money(net),
         f"product revenue (F3) − cancelled product value (F43), {rng}, {file_name}",
+    )
+    ordered, cancel_lines = week_lines(df, start)
+    big = ordered.iloc[0] if len(ordered) else None
+    top_revenue = float(big["revenue"]) if big is not None else None
+    where = (
+        f"invoice {big['Invoice']} at {big['InvoiceDate']:%Y-%m-%d %H:%M}, {file_name}"
+        if big is not None
+        else ""
+    )
+    add(
+        "top_line_revenue",
+        str(big["Description"])[:MAX_LABEL] if big is not None else "",
+        top_revenue,
+        money(top_revenue or 0),
+        f"largest single product line: Quantity×Price, {where}",
+    )
+    add(
+        "top_line_quantity",
+        "Units on the largest product line",
+        float(big["Quantity"]) if big is not None else None,
+        count(big["Quantity"] if big is not None else 0),
+        f"Quantity of the largest product line, {where}",
+    )
+    share = (
+        100 * top_revenue / cur.revenue
+        if top_revenue is not None and cur.revenue
+        else None
+    )
+    add(
+        "top_line_share",
+        "Largest product line, share of revenue",
+        share,
+        f"{rounded(share or 0, '0.1')}%",
+        f"largest product line / product revenue (F45 / F3), {rng}, {file_name}",
+    )
+    cancelled_by = matching(df, big, cancellations=True) if big is not None else None
+    minutes = (
+        (cancelled_by["InvoiceDate"].iloc[0] - big["InvoiceDate"]).total_seconds() // 60
+        if big is not None and cancelled_by is not None and len(cancelled_by)
+        else None
+    )
+    add(
+        "top_line_cancel_minutes",
+        "Minutes until the largest product line was cancelled",
+        minutes,
+        count(minutes or 0),
+        f"from invoice {big['Invoice'] if big is not None else ''} to cancellation "
+        f"{cancelled_by['Invoice'].iloc[0] if minutes is not None and cancelled_by is not None else ''} "
+        f"(same StockCode, customer and quantity, within {MATCH_DAYS} days), {file_name}",
+    )
+    without = cur.revenue - top_revenue if top_revenue is not None else None
+    add(
+        "revenue_excl_top_line",
+        "Revenue without the largest product line (GBP)",
+        without,
+        money(without or 0),
+        f"product revenue (F3) − largest product line (F45), {rng}, {file_name}",
+    )
+    without_wow = (
+        (without - prev.revenue) / prev.revenue * 100
+        if without is not None and prev.revenue
+        else None
+    )
+    add(
+        "revenue_excl_top_line_wow",
+        "revenue without the largest line, change, wow",
+        without_wow,
+        change(without_wow or 0),
+        f"(F49 − revenue of the previous week {start - timedelta(days=7)}..{start - timedelta(days=1)}) / base × 100; base {grouped(round(prev.revenue, 2))}, {file_name}",
+    )
+    top_cancel = cancel_lines.iloc[0] if len(cancel_lines) else None
+    cancel_value = -float(top_cancel["revenue"]) if top_cancel is not None else None
+    add(
+        "top_cancel_value",
+        str(top_cancel["Description"])[:MAX_LABEL] if top_cancel is not None else "",
+        cancel_value,
+        money(cancel_value or 0),
+        f"largest product cancellation line: −Quantity×Price, invoice {top_cancel['Invoice'] if top_cancel is not None else ''}, {rng}, {file_name}",
+    )
+    cancel_share = (
+        100 * cancel_value / cancelled_value
+        if cancel_value is not None and cancelled_value
+        else None
+    )
+    add(
+        "top_cancel_share",
+        "Largest product cancellation, share of cancelled value",
+        cancel_share,
+        f"{rounded(cancel_share or 0, '0.1')}%",
+        f"largest product cancellation line / cancelled product value (F51 / F43), {rng}, {file_name}",
     )
     return figures, anomalies

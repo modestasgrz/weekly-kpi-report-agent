@@ -121,7 +121,7 @@ def test_money_figures_all_use_nb_space(figures: dict[str, Figure]) -> None:
 
 def test_change_figures_are_never_grouped(figures: dict[str, Figure]) -> None:
     changes = [f for f in figures.values() if re.search(r"_(wow|vs4w|yoy)$", f.key)]
-    assert len(changes) == 15
+    assert len(changes) == 16
     assert figures["revenue_wow"].display == "+2502298.0%"
     for f in changes:
         assert NB not in f.display and "," not in f.display and " " not in f.display

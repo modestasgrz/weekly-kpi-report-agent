@@ -15,7 +15,7 @@ from weekly_kpi_report_agent.data import clean, missing_columns, read
 from weekly_kpi_report_agent.download import ChecksumError, download
 from weekly_kpi_report_agent.evalset import evaluate
 from weekly_kpi_report_agent.models import WeekReport
-from weekly_kpi_report_agent.pipeline import Budget, render_week, run_week
+from weekly_kpi_report_agent.pipeline import Budget, assess, render_week, run_week
 
 EXIT_CODES = {"ok": 0, "needs_review": 2, "no_data": 3}
 
@@ -59,6 +59,7 @@ def main(argv: list[str] | None = None) -> int:
         "render", help="rebuild a saved week's reports (and draft) without the model"
     )
     p.add_argument("--from", dest="source", type=Path, required=True)
+    p.add_argument("--data", type=Path)
     p.add_argument("--draft", action="store_true")
     sub.add_parser(
         "auth", help="authorize Gmail drafts (gmail.compose scope) for the demo account"
@@ -86,6 +87,26 @@ def main(argv: list[str] | None = None) -> int:
                 )
             except (OSError, ValueError):
                 print(f"error: no run in {args.source}", file=sys.stderr)
+                return 1
+            if args.data:
+                sheets = read(args.data)
+                if missing := missing_columns(sheets):
+                    print(
+                        f"error: missing columns: {', '.join(missing)}", file=sys.stderr
+                    )
+                    return 1
+                fresh = assess(
+                    clean(sheets),
+                    date.fromisoformat(saved.week_start),
+                    args.data.name,
+                )
+                fresh.attempts, fresh.draft_id = saved.attempts, saved.draft_id
+                saved = fresh
+            elif not any(f.id == "F52" for f in saved.figures):
+                print(
+                    f"error: {args.source} was written by an older version; re-run with --data <xlsx>",
+                    file=sys.stderr,
+                )
                 return 1
             try:
                 week = render_week(saved, args.source, args.draft)
