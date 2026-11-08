@@ -33,8 +33,9 @@ def test_ac_36_hero_cause_layout(
         "Look at this",
         "Check cancellation C581010: was &quot;ASSORTED COLOUR BIRD ORNAMENT&quot; a lost sale or a mistake?",
     ]
-    positions = [body.index(text) for text in order]
-    assert positions == sorted(positions)
+    at = body.index(order[0])
+    for text in order[1:]:
+        at = body.index(text, at)
     assert "✕ cancelled" in body
     assert body.count('valign="bottom"') == 48
     assert "<sup" not in page
