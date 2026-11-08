@@ -32,6 +32,13 @@ class Narrative(BaseModel):
         return [self.headline, *self.paragraphs]
 
 
+class Cause(BaseModel):
+    product: str
+    invoice: str
+    cancel_invoice: str | None
+    rule: Literal["top_line", "top_cancel"]
+
+
 class WeekReport(BaseModel):
     week_start: str
     status: Literal["ok", "needs_review", "no_data"]
@@ -41,3 +48,6 @@ class WeekReport(BaseModel):
     anomalies: list[str]
     violations: list[Violation]
     draft_id: str | None
+    history: dict[str, list[float]] = Field(default_factory=dict)
+    cause: Cause | None = None
+    cancelled_products: list[str] = Field(default_factory=list)

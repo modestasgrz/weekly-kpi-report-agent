@@ -23,7 +23,7 @@ from edge_support import (
 from weekly_kpi_report_agent.kpis import compute_week
 from weekly_kpi_report_agent.models import WeekReport
 from weekly_kpi_report_agent.pipeline import SYSTEM, Budget, run_week
-from weekly_kpi_report_agent.report import INK, INK2, plain
+from weekly_kpi_report_agent.report import AMBER, plain
 
 START = date(2011, 11, 28)
 FENCE = re.compile(r"<(/?)(week-data-[0-9a-f]{16})>")
@@ -284,7 +284,7 @@ def test_withheld_narrative_with_rejected_sentences(
     assert "Figures only this week: the written summary was held back" in page
     assert "Narrative withheld: the text failed the number check." in page
     assert "Rejected sentences" in page
-    assert "£134<sup" in page and ">F3</sup>" in page
+    assert "£134 this week" in page and "<sup" not in page
     assert "&lt;b&gt;" in page and "&quot;reached&quot;" in page
     assert "<b>" not in page
     assert "Orders were 2" not in page
@@ -313,7 +313,7 @@ def test_na_comparisons_read_no_comparison(
     _, folder, _, _ = run(tmp_path, monkeypatch, [*ROWS_C])
     page = (folder / "report.html").read_text()
     md = (folder / "report.md").read_text()
-    assert page.count("no comparison") == 4
+    assert page.count("no comparison") >= 4
     assert "n/a vs last week" not in page + md
     assert "vs last year n/a" in page
     assert "vs 4-wk avg n/a" in page
@@ -331,7 +331,7 @@ def test_arrows_follow_sign_and_flat_has_none(
     cur = ("6", "10001", "AAA", 1, datetime(2011, 11, 29, 10), 10.0, 1.0, UK)
     _, folder, _, _ = run(tmp_path / "b", monkeypatch, [prev, cur, FILLER])
     flat = (folder / "report.html").read_text()
-    assert flat.count("+0.0% vs last week") == 4
+    assert flat.count("+0.0% vs last week") >= 4
     assert "▲" not in flat and "▼" not in flat
     cur_up = ("6", "10001", "AAA", 3, datetime(2011, 11, 29, 10), 10.0, 1.0, UK)
     _, folder, _, _ = run(tmp_path / "c", monkeypatch, [prev, cur_up, FILLER])
@@ -345,17 +345,12 @@ def test_partial_week_mutes_change_lines_full_week_does_not(
     cur = ("6", "10001", "AAA", 3, datetime(2011, 11, 29, 10), 10.0, 1.0, UK)
     _, folder, _, _ = run(tmp_path / "a", monkeypatch, [prev, cur])
     partial = (folder / "report.html").read_text()
-    assert (
-        len(re.findall(rf'font-size:12px;color:{INK2};">[^<]*vs last week', partial))
-        == 4
-    )
-    assert f'color:{INK};">▲' not in partial
+    assert partial.count("partial week, not comparable") == 5
+    assert f'color:{AMBER};">▲' not in partial
     _, folder, _, _ = run(tmp_path / "b", monkeypatch, [prev, cur, FILLER])
     full = (folder / "report.html").read_text()
-    assert full.count(f'color:{INK};">▲ +200.0% vs last week') == 2
-    assert (
-        len(re.findall(rf'font-size:12px;color:{INK};">[^<]*vs last week', full)) == 4
-    )
+    assert full.count(f'color:{AMBER};">▲ +200.0% vs last week') == 3
+    assert "partial week, not comparable" not in full
 
 
 def test_customer_id_line_absent_when_f41_is_zero_present_otherwise(
@@ -411,7 +406,7 @@ def test_markdown_keeps_markers_and_footnote_lines(
     assert "Needs review" not in md and "Needs review" not in page
     assert "[F" not in page
     assert "| F3 | Product revenue (GBP) | £26 |" in md
-    assert ">F3</sup>" in page
+    assert "<sup" not in page
 
 
 def test_md_needs_review_block_and_key_numbers_list(

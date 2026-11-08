@@ -38,9 +38,9 @@ def displays(by_id: dict[str, Figure], *ids: str) -> list[str]:
     return [by_id[i].display for i in ids]
 
 
-def test_always_44_figures_in_fixed_order() -> None:
+def test_always_52_figures_in_fixed_order() -> None:
     by_id, _ = figures([line("1", "10001", "A", 1, at("2011-11-29"), 1.0)])
-    assert list(by_id) == [f"F{i}" for i in range(1, 45)]
+    assert list(by_id) == [f"F{i}" for i in range(1, 53)]
 
 
 def test_week_with_only_cancellations_has_no_product_figures() -> None:

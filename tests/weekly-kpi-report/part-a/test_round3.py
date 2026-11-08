@@ -55,7 +55,7 @@ def saved_week(tmp_path: Path) -> Path:
         status="ok",
         reasons=[],
         attempts=1,
-        figures=[],
+        figures=[fig("F52", "top_cancel_share", "n/a", 0.0)],
         anomalies=[],
         violations=[],
         draft_id=None,
@@ -83,3 +83,21 @@ def test_render_with_invalid_narrative_json_rewrites_nothing(
     assert "invalid narrative.json" in capsys.readouterr().err
     assert (folder / "figures.json").read_text() == before
     assert not (folder / "report.md").exists()
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("£1 418 [F3]", f"£1{NB}418 [F3]"),
+        ("£1 234 567 [F3]", f"£1{NB}234{NB}567 [F3]"),
+        ("£328 713 and 463 orders", f"£328{NB}713 and 463 orders"),
+        ("1 4189", "1 4189"),
+        ("12 34", "12 34"),
+        ("2 weeks", "2 weeks"),
+        ("+46.8% 123", "+46.8% 123"),
+    ],
+)
+def test_spaced_thousands_only_touches_digit_groups(text: str, expected: str) -> None:
+    from weekly_kpi_report_agent.pipeline import SPACED_THOUSANDS
+
+    assert SPACED_THOUSANDS.sub(NB, text) == expected
