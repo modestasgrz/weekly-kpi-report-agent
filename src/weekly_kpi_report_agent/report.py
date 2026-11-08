@@ -3,6 +3,7 @@ import re
 from datetime import date
 from decimal import ROUND_HALF_UP, Decimal
 
+from weekly_kpi_report_agent.kpis import rounded
 from weekly_kpi_report_agent.models import Figure, Narrative, WeekReport
 
 ATTRIBUTION = "Data: Online Retail II (Chen, D., 2012), UCI Machine Learning Repository, https://doi.org/10.24432/C5CG6D — licensed CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/)."
@@ -77,7 +78,7 @@ def look_at_this(week: WeekReport) -> list[str]:
         for kind, words in [("wow", "vs last week"), ("vs4w", "vs the 4-week average")]:
             move = by_key[f"{kpi}_{kind}"]
             if f"{kpi}_{kind}" in week.anomalies and (move.value or 0) < 0:
-                lines.append(f"Find out why {kpi} fell {move.display} {words}")
+                lines.append(f"Find out why {kpi} fell ({move.display} {words})")
     top = by_key["product_1_revenue"]
     if (
         len(lines) < 3
@@ -121,11 +122,7 @@ def render(
         return html.escape(re.sub(r" ?\[F\d+\]", "", value))
 
     def share(figure: Figure) -> int:
-        return int(
-            Decimal(100 * (figure.value or 0) / (revenue.value or 1)).quantize(
-                Decimal(1), ROUND_HALF_UP
-            )
-        )
+        return int(rounded(100 * (figure.value or 0) / (revenue.value or 1), "1"))
 
     def chip(move: Figure, key: str, size: int = 12) -> str:
         words = change_words(move) + (
@@ -138,7 +135,11 @@ def render(
             if partial or flat
             else RED
             if (value or 0) < 0
-            and (f"{key}_wow" in week.anomalies or f"{key}_vs4w" in week.anomalies)
+            and any(
+                f"{key}_{kind}" in week.anomalies
+                and (by_key[f"{key}_{kind}"].value or 0) < 0
+                for kind in ["wow", "vs4w"]
+            )
             else AMBER
             if (value or 0) >= 1.0
             else INK2
@@ -146,7 +147,7 @@ def render(
         mark = "" if flat else "▲ " if (value or 0) > 0 else "▼ "
         return (
             f'<span style="display:inline-block;padding:2px 8px;border:1px solid {colour};'
-            f'border-radius:999px;font-size:{size}px;line-height:1.5;color:{colour};">{mark}{html.escape(words)}</span>'
+            f'border-radius:10px;font-size:{size}px;line-height:1.5;color:{colour};">{mark}{html.escape(words)}</span>'
         )
 
     def bar(fraction: float, colour: str) -> str:
@@ -228,8 +229,8 @@ def render(
                 )
                 later = (
                     f"{minutes.display} min later"
-                    if minutes.value < 120
-                    else f"{max(1, days)} days later"
+                    if minutes.value <= 120
+                    else f"{max(1, days)} day{'' if max(1, days) == 1 else 's'} later"
                 )
                 card = f"1 order: {cause.product} ×{by_key['top_line_quantity'].display} · {by_key['top_line_revenue'].display} → cancelled {later}"
             md += [f"**What changed:** {card}", ""]
@@ -240,9 +241,9 @@ def render(
                     by_key["revenue_excl_top_line_wow"],
                 )
                 bar_rows = "".join(
-                    f'<tr><td width="38%" style="padding:6px 8px 0 0;font-size:13px;color:{INK2};">{label}</td>'
-                    f'<td width="34%" style="padding:6px 8px 0 0;">{bar((value.value or 0) / (revenue.value or 1), colour)}</td>'
-                    f'<td align="right" style="padding:6px 0 0;font-size:13px;color:{INK};white-space:nowrap;">{html.escape(note)}</td></tr>'
+                    f'<tr><td width="38%" bgcolor="{SURFACE}" style="padding:6px 8px 0 0;font-size:13px;color:{INK2};">{label}</td>'
+                    f'<td width="34%" bgcolor="{SURFACE}" style="padding:6px 8px 0 0;">{bar((value.value or 0) / (revenue.value or 1), colour)}</td>'
+                    f'<td align="right" bgcolor="{SURFACE}" style="padding:6px 0 0;font-size:13px;color:{INK};white-space:nowrap;">{html.escape(note)}</td></tr>'
                     for label, value, colour, note in [
                         ("As booked", revenue, MUTED, revenue.display),
                         (

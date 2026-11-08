@@ -11,7 +11,6 @@ MAX_LABEL = 100
 ANOMALY_PCT = Decimal("25.0")
 LARGE_CANCEL_SHARE = 0.25
 MATCH_DAYS = 14
-HISTORY_KEYS = ["revenue", "orders", "aov", "customers"]
 COMPARED = ["revenue", "orders", "aov", "units", "customers"]
 DQ_BUCKETS = ["duplicate", "cancellation", "adjustment", "non_product", "non_positive"]
 DQ_KEYS = [

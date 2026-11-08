@@ -36,7 +36,7 @@ FIGURE_KEYS_R4 = [
     "top_cancel_share",
 ]
 CHIP = re.compile(
-    r'<span style="display:inline-block;padding:2px 8px;border:1px solid (#[0-9A-Fa-f]{6});border-radius:999px;font-size:\d+px;line-height:1\.5;color:#[0-9A-Fa-f]{6};">(.*?)</span>'
+    r'<span style="display:inline-block;padding:2px 8px;border:1px solid (#[0-9A-Fa-f]{6});border-radius:10px;font-size:\d+px;line-height:1\.5;color:#[0-9A-Fa-f]{6};">(.*?)</span>'
 )
 SPARK = re.compile(
     r'<td height="(\d+)" bgcolor="(#[0-9A-Fa-f]{6})" style="height:(\d+)px;font-size:0;line-height:0;background-color:#[0-9A-Fa-f]{6};">'
@@ -591,8 +591,8 @@ def test_look_at_this_negative_anomalies_and_stock_line() -> None:
     assert {"revenue_wow", "revenue_vs4w"} <= set(week.anomalies)
     by_key = keyed(week)
     assert look_at_this(week) == [
-        f"Find out why revenue fell {by_key['revenue_wow'].display} vs last week",
-        f"Find out why revenue fell {by_key['revenue_vs4w'].display} vs the 4-week average",
+        f"Find out why revenue fell ({by_key['revenue_wow'].display} vs last week)",
+        f"Find out why revenue fell ({by_key['revenue_vs4w'].display} vs the 4-week average)",
         f'Keep "AAA" in stock: the top seller at {by_key["product_1_revenue"].display}.',
     ]
 
@@ -612,7 +612,7 @@ def test_look_at_this_orders_fall_and_units_never() -> None:
     assert "orders_wow" in week.anomalies and "revenue_wow" not in week.anomalies
     assert "units_wow" not in week.anomalies
     text = " ".join(look_at_this(week))
-    assert "Find out why orders fell -75.0% vs last week" in text
+    assert "Find out why orders fell (-75.0% vs last week)" in text
     assert "units" not in text
 
 
@@ -635,7 +635,7 @@ def test_look_at_this_is_capped_at_three_in_order_without_stock() -> None:
     assert lines[1] == "Re-run this report once the data after 2011-11-30 is in."
     assert (
         lines[2]
-        == f"Find out why revenue fell {by_key['revenue_wow'].display} vs last week"
+        == f"Find out why revenue fell ({by_key['revenue_wow'].display} vs last week)"
     )
     assert not any("in stock" in x for x in lines)
 
@@ -851,8 +851,8 @@ def test_render_without_history_does_not_break() -> None:
     [
         (1, "1 min later"),
         (119, "119 min later"),
-        (121, "1 days later"),
-        (130, "1 days later"),
+        (121, "1 day later"),
+        (130, "1 day later"),
         (2160, "2 days later"),
         (3600, "3 days later"),
         (4320, "3 days later"),
@@ -1114,3 +1114,24 @@ def test_older_figures_json_without_data_exits_one(
     (folder / "figures.json").write_text(json.dumps(data))
     assert main(["render", "--from", str(folder)]) == 1
     assert "written by an older version" in capsys.readouterr().err
+
+
+def test_render_with_data_keeps_saved_rejected_sentences(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    book = write_book(tmp_path / "f.xlsx", S1)
+    bad = narrative("Weekly sales summary", "Revenue reached £1 [F3] this week.")
+    install(monkeypatch, FakeLLM([bad, bad, bad]))
+    out = tmp_path / "out"
+    main(run_args(book, out))
+    folder = out / "2011-11-28"
+    saved = json.loads((folder / "figures.json").read_text())
+    assert saved["violations"]
+    llm, _ = install(monkeypatch, FakeLLM([STRICT_RAISE]))
+    assert main(["render", "--from", str(folder), "--data", str(book)]) == 2
+    assert llm.calls == []
+    after = json.loads((folder / "figures.json").read_text())
+    assert after["violations"] == saved["violations"]
+    page = (folder / "report.html").read_text()
+    assert "Rejected sentences" in page
+    assert "Narrative withheld: the text failed the number check." in page

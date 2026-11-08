@@ -100,7 +100,11 @@ def main(argv: list[str] | None = None) -> int:
                     date.fromisoformat(saved.week_start),
                     args.data.name,
                 )
-                fresh.attempts, fresh.draft_id = saved.attempts, saved.draft_id
+                fresh.attempts, fresh.draft_id, fresh.violations = (
+                    saved.attempts,
+                    saved.draft_id,
+                    saved.violations,
+                )
                 saved = fresh
             elif not any(f.id == "F52" for f in saved.figures):
                 print(
