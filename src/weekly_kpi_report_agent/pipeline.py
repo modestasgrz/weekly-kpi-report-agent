@@ -26,7 +26,7 @@ Rules:
 5. Mention every anomaly listed. Keep it to at most 2 short paragraphs of plain text, no markdown, and a headline under 120 characters.
 6. Write for a busy shop owner in plain words: never use "anomaly", "anomalies" or "flagged"; call a big move unusual.
 7. If the Notes list large cancellations or a partial week, the headline says so and does not present revenue growth as good news.
-8. If F47 is above 25.0% or F52 is above 50.0%, explain the week through that one order (F45 to F52), not through order size or basket mix.
+8. If the data says "One-order cause: yes", explain the week through that one order (F45 to F52), not through order size or basket mix. If it says "One-order cause: no", do not attribute the week to a single order.
 9. If a previous attempt was rejected, fix exactly the listed problems.
 Reply with JSON: {"headline": "...", "paragraphs": ["...", "..."]}."""
 
@@ -49,6 +49,7 @@ def user_message(week: WeekReport, feedback: list[str]) -> str:
         "Anomalies: "
         + (", ".join(f"{k} [{by_key[k].id}]" for k in week.anomalies) or "none"),
         "Notes: " + ("; ".join(week.reasons) or "none"),
+        f"One-order cause: {'yes' if week.cause else 'no'}",
     ]
     if feedback:
         data += ["Your previous attempt was rejected for these problems:", *feedback]

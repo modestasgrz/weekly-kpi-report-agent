@@ -591,8 +591,8 @@ def test_look_at_this_negative_anomalies_and_stock_line() -> None:
     assert {"revenue_wow", "revenue_vs4w"} <= set(week.anomalies)
     by_key = keyed(week)
     assert look_at_this(week) == [
-        f"Find out why revenue fell ({by_key['revenue_wow'].display} vs last week)",
-        f"Find out why revenue fell ({by_key['revenue_vs4w'].display} vs the 4-week average)",
+        f"Find out why revenue fell {by_key['revenue_wow'].display.lstrip('-')} vs last week",
+        f"Find out why revenue fell {by_key['revenue_vs4w'].display.lstrip('-')} vs the 4-week average",
         f'Keep "AAA" in stock: the top seller at {by_key["product_1_revenue"].display}.',
     ]
 
@@ -612,7 +612,7 @@ def test_look_at_this_orders_fall_and_units_never() -> None:
     assert "orders_wow" in week.anomalies and "revenue_wow" not in week.anomalies
     assert "units_wow" not in week.anomalies
     text = " ".join(look_at_this(week))
-    assert "Find out why orders fell (-75.0% vs last week)" in text
+    assert "Find out why orders fell 75.0% vs last week" in text
     assert "units" not in text
 
 
@@ -624,19 +624,26 @@ def test_look_at_this_is_capped_at_three_in_order_without_stock() -> None:
         row("101", "10001", "AAA", 1, t(2, 10), 10.0, 17850.0),
         cancel_of_top(timedelta(minutes=45), inv="C103"),
     ]
-    week = build(rows)
-    assert any(r.startswith("partial week") for r in week.reasons)
-    assert week.cause is not None and week.cause.cancel_invoice == "C103"
-    assert {"revenue_wow", "revenue_vs4w"} <= set(week.anomalies)
+    partial = build(rows)
+    assert any(r.startswith("partial week") for r in partial.reasons)
+    assert {"revenue_wow", "revenue_vs4w"} <= set(partial.anomalies)
+    lines = look_at_this(partial)
+    assert lines == [
+        lines[0],
+        "Re-run this report once the data after 2011-11-30 is in.",
+    ]
+    assert lines[0].startswith("Check cancellation C103")
+
+    week = build([*rows, END])
+    assert not any(r.startswith("partial week") for r in week.reasons)
     lines = look_at_this(week)
     by_key = keyed(week)
     assert len(lines) == 3
     assert lines[0].startswith("Check cancellation C103")
-    assert lines[1] == "Re-run this report once the data after 2011-11-30 is in."
-    assert (
-        lines[2]
-        == f"Find out why revenue fell ({by_key['revenue_wow'].display} vs last week)"
+    assert lines[1] == (
+        f"Find out why revenue fell {by_key['revenue_wow'].display.lstrip('-')} vs last week"
     )
+    assert lines[2].startswith("Find out why ")
     assert not any("in stock" in x for x in lines)
 
 
@@ -851,8 +858,11 @@ def test_render_without_history_does_not_break() -> None:
     [
         (1, "1 min later"),
         (119, "119 min later"),
-        (121, "1 day later"),
-        (130, "1 day later"),
+        (120, "2 hours later"),
+        (121, "2 hours later"),
+        (150, "3 hours later"),
+        (1439, "24 hours later"),
+        (1440, "1 day later"),
         (2160, "2 days later"),
         (3600, "3 days later"),
         (4320, "3 days later"),
@@ -864,9 +874,9 @@ def test_cause_card_minutes_then_days(minutes: int, tail: str) -> None:
     assert f"1 order: BBB ×40 · £1{NB}000 → cancelled {tail}" in card(page(week))
 
 
-def test_cause_card_at_exactly_120_minutes_is_still_minutes() -> None:
+def test_cause_card_at_exactly_120_minutes_switches_to_hours() -> None:
     week = build([TOP, FILL, END, cancel_of_top(timedelta(minutes=120))])
-    assert "→ cancelled 120 min later" in card(page(week))
+    assert "→ cancelled 2 hours later" in card(page(week))
 
 
 def test_cause_card_not_cancelled_form() -> None:
@@ -1135,3 +1145,16 @@ def test_render_with_data_keeps_saved_rejected_sentences(
     page = (folder / "report.html").read_text()
     assert "Rejected sentences" in page
     assert "Narrative withheld: the text failed the number check." in page
+
+
+def test_user_message_carries_the_shared_cause_condition() -> None:
+    from weekly_kpi_report_agent.pipeline import SYSTEM, user_message
+
+    caused = build([TOP, FILL, END, cancel_of_top(timedelta(minutes=12))])
+    assert caused.cause is not None
+    assert "One-order cause: yes" in user_message(caused, [])
+    plain_week = build([FILL, END])
+    assert plain_week.cause is None
+    assert "One-order cause: no" in user_message(plain_week, [])
+    assert 'If the data says "One-order cause: yes"' in SYSTEM
+    assert "F47 is above" not in SYSTEM

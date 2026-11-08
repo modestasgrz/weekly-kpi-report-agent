@@ -1,7 +1,6 @@
 import html
 import re
 from datetime import date
-from decimal import ROUND_HALF_UP, Decimal
 
 from weekly_kpi_report_agent.kpis import rounded
 from weekly_kpi_report_agent.models import Figure, Narrative, WeekReport
@@ -74,11 +73,14 @@ def look_at_this(week: WeekReport) -> list[str]:
     for reason in week.reasons:
         if m := re.fullmatch(r"partial week: data ends (\S+)", reason):
             lines.append(f"Re-run this report once the data after {m[1]} is in.")
-    for kpi in ["revenue", "orders"]:
+    partial = any(r.startswith("partial week: ") for r in week.reasons)
+    for kpi in [] if partial else ["revenue", "orders"]:
         for kind, words in [("wow", "vs last week"), ("vs4w", "vs the 4-week average")]:
             move = by_key[f"{kpi}_{kind}"]
             if f"{kpi}_{kind}" in week.anomalies and (move.value or 0) < 0:
-                lines.append(f"Find out why {kpi} fell ({move.display} {words})")
+                lines.append(
+                    f"Find out why {kpi} fell {move.display.lstrip('-')} {words}"
+                )
     top = by_key["product_1_revenue"]
     if (
         len(lines) < 3
@@ -224,13 +226,14 @@ def render(
             elif minutes.value is None:
                 card = f"1 order: {cause.product} ×{by_key['top_line_quantity'].display} · {by_key['top_line_revenue'].display} = {by_key['top_line_share'].display} of revenue"
             else:
-                days = int(
-                    Decimal(minutes.value / 1440).quantize(Decimal(1), ROUND_HALF_UP)
-                )
+                hours = int(rounded(minutes.value / 60, "1"))
+                days = int(rounded(minutes.value / 1440, "1"))
                 later = (
                     f"{minutes.display} min later"
-                    if minutes.value <= 120
-                    else f"{max(1, days)} day{'' if max(1, days) == 1 else 's'} later"
+                    if minutes.value < 120
+                    else f"{hours} hours later"
+                    if minutes.value < 1440
+                    else f"{days} day{'' if days == 1 else 's'} later"
                 )
                 card = f"1 order: {cause.product} ×{by_key['top_line_quantity'].display} · {by_key['top_line_revenue'].display} → cancelled {later}"
             md += [f"**What changed:** {card}", ""]
