@@ -58,3 +58,4 @@ def test_ac_36_hero_cause_layout(
     page = (partial / "2011-12-05" / "report.html").read_text()
     assert "partial week, not comparable" in page
     assert "Re-run this report once the data after 2011-12-05 is in." in page
+    assert "Find out why" not in page
