@@ -87,7 +87,7 @@ Latest demo render, 2026-11-08 (round 4): week 2011-09-19 re-rendered without th
 
 | Week | Status | What the report says |
 | --- | --- | --- |
-| 2011-09-19 | `ok` | Hero revenue £328 713 with "+46.8% vs last week" and "+37.4% vs last year"; amber chips and 12-week spark-columns show the autumn ramp; "Look at this": keep the top seller in stock |
+| 2011-09-19 | `ok` | Hero revenue £328 713 with "+46.8% vs last week" and "+37.4% vs last year"; amber chips and 12-week spark-columns per key number; "Look at this": keep the top seller in stock |
 | 2011-12-05 | `needs_review` | Banner: partial week (data stops Friday 2011-12-09) and £172 782 of products cancelled. Hero: revenue after cancellations £310 943 (booked £483 725). Cause card: `1 order: PAPER CRAFT , LITTLE BIRDIE ×80 995 · £168 470 → cancelled 12 min later`; without it revenue is £315 256, +1.9% vs last week. "Look at this": check cancellation C581484, re-run once the rest of the week is in. Headline: "the revenue jump is not good news" |
 
 - **Why week 2011-12-05 matters:** its top "sale" is one order of 80 995 units cancelled 12 minutes later (invoices 581483 / C581484). Revenue is gross, so without the cause card the week reads as a +56.4% jump; the code finds the order, links it to its cancellation and shows the week without it (≈ flat). The narrative now explains the week through that order because the code passes it the same cause condition the card uses.
