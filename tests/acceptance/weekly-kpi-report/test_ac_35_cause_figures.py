@@ -5,11 +5,11 @@ from pathlib import Path
 import pytest
 from kpi_helpers import (
     BIRD,
-    GOOD,
     FakeLLM,
     d,
     figs,
     install,
+    narrative,
     report,
     run_week,
     write_workbook,
@@ -18,12 +18,17 @@ from kpi_helpers import (
 ORDER = ("581009", "84879", BIRD, 1000, d("2011-12-02 09:15"), 1.69, 13000, "France")
 CANCEL = ("C581010", "84879", BIRD, -1000, d("2011-12-02 09:27"), 1.69, 13000, "France")
 NB = " "
+CAUSE_GOOD = narrative(
+    f"Revenue booked £1{NB}833 [F3], £137 [F44] after cancellations",
+    [f"One order of £1{NB}690 [F45] was cancelled 12 [F48] minutes later."],
+)
 
 
 def test_ac_35_cause_figures(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    install(monkeypatch, FakeLLM([GOOD]))
+    llm, _ = install(monkeypatch, FakeLLM([CAUSE_GOOD]))
     out = tmp_path / "out"
     run_week(write_workbook(tmp_path / "f.xlsx", extra=[ORDER, CANCEL]), out)
+    assert len(llm.calls) == 1
     f = figs(out)
     expected = {
         "F3": f"£1{NB}833",
@@ -50,5 +55,7 @@ def test_ac_35_cause_figures(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) ->
     assert set(r["history"]) == {"revenue", "orders", "aov", "customers"}
     assert all(len(v) == 12 for v in r["history"].values())
     assert r["history"]["revenue"][-1] == pytest.approx(f["F3"]["value"])
-    for name in ["report.html", "report.md"]:
-        assert "13000" not in (out / "2011-11-28" / name).read_text()
+    assert r["violations"] == []
+    for name in ["report.html", "report.md", "figures.json", "narrative.json"]:
+        text = (out / "2011-11-28" / name).read_text()
+        assert "13000" not in text and "12345" not in text, name

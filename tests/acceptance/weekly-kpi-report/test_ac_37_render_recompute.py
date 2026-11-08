@@ -8,13 +8,16 @@ from kpi_helpers import GOOD, FakeLLM, cli, install, report, run_week, write_wor
 
 
 def test_ac_37_render_recompute(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     install(monkeypatch, FakeLLM([GOOD]))
     out = tmp_path / "out"
     data = write_workbook(tmp_path / "f.xlsx")
     run_week(data, out, "2011-12-05", "--no-gmail")
     week = out / "2011-11-28"
+    original = json.loads((week / "figures.json").read_text())
     saved = json.loads((week / "figures.json").read_text())
     saved["figures"] = saved["figures"][:44]
     for key in ["history", "cause", "cancelled_products"]:
@@ -22,9 +25,15 @@ def test_ac_37_render_recompute(
     (week / "figures.json").write_text(json.dumps(saved))
 
     llm, _ = install(monkeypatch, FakeLLM([RuntimeError("no model calls")]))
+    assert cli("render", "--from", str(week)) == 1
+    assert (
+        f"error: {week} was written by an older version; re-run with --data <xlsx>"
+        in capsys.readouterr().err
+    )
     assert cli("render", "--from", str(week), "--data", str(data)) == 0
     assert llm.calls == []
     r = report(out)
-    assert len(r["figures"]) == 52
-    assert len(r["history"]["revenue"]) == 12
+    assert r["figures"] == original["figures"]
+    for key in ["history", "cause", "cancelled_products"]:
+        assert r[key] == original[key], key
     assert r["status"] == "ok"

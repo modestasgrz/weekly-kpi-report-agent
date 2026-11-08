@@ -3,8 +3,16 @@
 from pathlib import Path
 
 import pytest
-from kpi_helpers import GOOD, NO_NUMBERS, FakeLLM, install, run_week, write_workbook
-from test_ac_35_cause_figures import CANCEL, ORDER
+from kpi_helpers import (
+    GOOD,
+    NO_NUMBERS,
+    FakeLLM,
+    install,
+    report,
+    run_week,
+    write_workbook,
+)
+from test_ac_35_cause_figures import CANCEL, CAUSE_GOOD, ORDER
 
 NB = " "
 
@@ -12,7 +20,7 @@ NB = " "
 def test_ac_36_hero_cause_layout(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    install(monkeypatch, FakeLLM([GOOD]))
+    install(monkeypatch, FakeLLM([CAUSE_GOOD]))
     out = tmp_path / "out"
     run_week(write_workbook(tmp_path / "f.xlsx", extra=[ORDER, CANCEL]), out)
     page = (out / "2011-11-28" / "report.html").read_text()
@@ -30,15 +38,18 @@ def test_ac_36_hero_cause_layout(
     assert "✕ cancelled" in body
     assert body.count('valign="bottom"') == 48
     assert "<sup" not in page
+    assert "in stock" not in body
 
     install(monkeypatch, FakeLLM([GOOD]))
     normal = tmp_path / "normal"
     run_week(write_workbook(tmp_path / "g.xlsx"), normal)
     page = (normal / "2011-11-28" / "report.html").read_text()
     body = page[page.index("<body") :]
-    assert "Revenue after cancellations" not in body
+    assert ">Revenue after cancellations<" not in body
+    assert "1 order:" not in body
     hero = body.index(">Revenue<")
     assert hero < body.index("£143", hero)
+    assert report(normal)["cause"] is None
 
     install(monkeypatch, FakeLLM([NO_NUMBERS]))
     partial = tmp_path / "partial"
