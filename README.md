@@ -35,7 +35,7 @@ xlsx ──► clean (dedupe, cancellations, adjustments, non-product codes, pri
 
 ## Measured
 
-`weekly-kpi-report eval-checker` builds a labelled set from real week figures. Narratives are generated in code: 60 clean ones and 60 with exactly one planted error, 10 of each type (`digit_swap`, `rounding`, `sign_flip`, `misattributed`, `invented`, `wrong_direction`). On the full dataset (weeks 2010-12-06..2011-11-28, seed 7) the result is **precision 1.000, recall 1.000 on 120 cases**. Seeds 1–5 give the same result.
+`weekly-kpi-report eval-checker` builds a labelled set from real week figures. Narratives are generated in code: 120 clean ones and 120 with exactly one planted error, 20 of each type (`digit_swap`, `rounding`, `sign_flip`, `misattributed`, `invented`, `wrong_direction`). On the full dataset (weeks 2010-12-06..2011-11-28, seed 7) the checker **caught all 120 planted errors (100 wrong numbers, 20 wrong rose/fell words), with 0 false alarms on the 120 clean narratives** (precision 1.000, recall 1.000 on 240 cases). Seeds 1–5 give the same result (run 2026-11-15).
 
 The planted errors are synthetic and the checker is exact matching by design, so this number shows the checker does what it claims on those six error kinds. It says nothing about how often the LLM writes a clean narrative on its first try; the backfill summary (`backfill_summary.csv`, column `attempts`) records that.
 
@@ -94,7 +94,7 @@ Latest demo render, 2026-11-08 (round 4): week 2011-09-19 re-rendered without th
 - **Number check on real narratives:** 8 real runs of the two demo weeks on 2026-11-06: 7 passed on the first attempt, 1 needed one retry, none was withheld. The U+202F separator came in round 3 (2026-11-06); on the first live call under it (2026-11-08) the model wrote plain spaces and the narrative was withheld (the cost cap stopped a retry); since round 4 the model's text has plain or no-break spaces between digit groups normalised to U+202F before the check, and the next call passed first time. Estimated cost about $0.014 per week (the code's estimate at $2 / $10 per million input / output tokens).
 - **Full backfill (53 weeks, 2010-12-06..2011-12-05, run 2026-11-06):** 50 `ok`, 2 `needs_review`, 1 `no_data`. The 52 weeks with sales got a narrative that passed the number check: 51 on the first attempt, 1 (2011-08-29) after one retry, none withheld. `needs_review`: 2011-01-17 (large cancellations: £78 841 against £209 331 revenue) and 2011-12-05 (partial week + large cancellations). `no_data`: 2010-12-27 (the week between Christmas and New Year, no sales lines). Logged cost $0.77 (the code's estimate at $2 / $10 per million input / output tokens).
 - **Large-cancellation flag:** on the full dataset it fires on 2 of 104 weeks (2011-01-17 and 2011-12-05), both real giant orders cancelled the same week.
-- **Checker eval:** precision 1.000, recall 1.000 on 120 planted cases (see Measured).
+- **Checker eval:** 120/120 planted errors caught (100 wrong numbers, 20 wrong rose/fell words), 0 false alarms on 120 clean narratives (see Measured).
 
 ## Known limits
 
