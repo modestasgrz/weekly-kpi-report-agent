@@ -18,7 +18,7 @@ TYPES = [
     "invented",
     "wrong_direction",
 ]
-PER_TYPE = 10
+PER_TYPE = 20
 CLEAN = len(TYPES) * PER_TYPE
 
 
@@ -169,14 +169,14 @@ def evaluate(
     by_type = {kind: TypeResult() for kind in TYPES}
     for kind in TYPES:
         for _ in range(100 * PER_TYPE):
-            if by_type[kind].planted == PER_TYPE:
-                break
             figures, by_id, text = case()
             planted = plant(kind, text, by_id, rng)
             if planted is None or planted == text:
                 continue
             by_type[kind].planted += 1
             by_type[kind].caught += bool(check_narrative(planted, figures))
+            if by_type[kind].planted == PER_TYPE:
+                break
         else:
             raise ValueError(f"could not plant {PER_TYPE} {kind} errors in the range")
     tp = sum(r.caught for r in by_type.values())
