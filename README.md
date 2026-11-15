@@ -1,5 +1,9 @@
 # weekly-kpi-report-agent
 
+**Demo video (≈1 min):** click the poster to play it.
+
+[![weekly-kpi-report-agent demo video](docs/demo/weekly-kpi-report-agent-poster.png)](docs/demo/weekly-kpi-report-agent-demo.mp4)
+
 Weekly sales KPI report where every number is computed in code, the LLM only writes the narrative around the given figures, and a checker rejects any number in the text that is not in the computed set.
 
 **The team task it replaces:** every Monday someone pulls last week's sales numbers into a summary email (revenue, orders, average order value, top products, what changed), and sometimes a hand-typed figure is wrong. This tool writes that email as a **Gmail draft**. A human reads it and presses send. The code has no send path.
