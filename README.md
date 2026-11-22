@@ -1,8 +1,8 @@
 # weekly-kpi-report-agent
 
-**Demo video (≈1 min):** click the poster to play it.
+**Demo video (≈1 min):**
 
-[![weekly-kpi-report-agent demo video](docs/demo/weekly-kpi-report-agent-poster.png)](docs/demo/weekly-kpi-report-agent-demo.mp4)
+https://github.com/user-attachments/assets/282ba734-1790-444d-b11c-e39b6a0d75c2
 
 Weekly sales KPI report where every number is computed in code, the LLM only writes the narrative around the given figures, and a checker rejects any number in the text that is not in the computed set.
 
